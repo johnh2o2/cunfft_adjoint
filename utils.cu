@@ -1,5 +1,4 @@
 #include "typedefs.h"
-#include "filter.h"
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
@@ -39,18 +38,15 @@ void copy_data_to_gpu(plan *p){
 	// Copy f_j -> GPU
 	checkCudaErrors(
 		cudaMemcpy(p->g_f_data, f_data_complex, 
-			p->Ndata * sizeof(float), cudaMemcpyHostToDevice))
+			p->Ndata * sizeof(float), cudaMemcpyHostToDevice)
 	);
 
 	// Copy x_j -> GPU
 	checkCudaErrors(
 		cudaMemcpy(p->g_x_data, p->x_data, 
-			p->Ndata * sizeof(float), cudaMemcpyHostToDevice))
+			p->Ndata * sizeof(float), cudaMemcpyHostToDevice)
 	);
 	
-	// Set the filter properties
-	// and precompute relevant values
-	set_filter_properties(p);
 
 }
 
@@ -62,5 +58,22 @@ void set_x(float *x, size_t size){
 		x[i]-=x[0];
 		x[i]/=range;
 		x[i] *= 2 * PI;
+	}
+}
+
+__global__
+size_t
+get_index(){
+	return blockIdx.x * BLOCK_SIZE + threadIdx.x;
+}
+
+__global__
+void
+normalize(Complex *f_hat, unsigned int Ngrid){
+	unsigned int i = get_index();
+	int k;
+	if ( i < Ngrid ){
+		k = i - Ngrid/2;
+		f_hat[i] *= sqrt(PI/g_fprops->tau) * expf(k * k * g_fprops->tau);
 	}
 }

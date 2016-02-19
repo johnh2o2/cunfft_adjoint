@@ -1,28 +1,28 @@
-__global__ filter_properties *g_fprops;
 
+#include "utils.cu"
 
-__device__ void smooth_to_grid(Complex *f_grid, const unsigned int index, 
-				const Complex y, const float ioffset, const float dx, const unsigned int filterRadius){
-	// REWRITE
-	float val = 0;
-	for (unsigned int i = -filterRadius + 1; i < filterRadius; i++){
-		val = y * smoothing_filter(); 
+__device__ void smooth_to_grid(Complex *f_data, Complex *f_grid, const unsigned int j, const unsigned int i){
+	dTyp val;
+	for (unsigned int m = -g_fprops->filter_radius + 1; 
+			  m < g_fprops->filter_radius; 
+                          m++)
+	{
+		if (f_data == NULL) val = 1.0;
+		else val = f_data[j];
+
+		val *= filter(j, i, m);
 		atomicAdd(&(f_grid[i].x), val);
 	}
-
 }
 
-__global__ void fast_gaussian_gridding(Complex *f_data, Complex *f_grid, 
+__global__ void fast_gridding(Complex *f_data, Complex *f_grid, 
 					const float *x_data, const unsigned int Ngrid, 
 					const unsigned int Ndata){
-	int i = // thread id
+	unsigned int i = get_index();
 	
 	if (i < Ndata) {
-		float findex = (Ngrid * (x_data[i] + 0.5));
-		if (f_data == NULL)
-			smooth_to_grid(f_grid, (int) findex, 1.0, findex - ((int) findex), 1.0/Ngrid, Ngrid / Ndata)
-		else
-			smooth_to_grid(f_grid, (int) findex, f_data[i], findex - ((int) findex), 1.0/Ngrid, Ngrid / Ndata)
+		unsigned int j = (int) ((x[i] / (2 * PI)) * Ndata);
+		smooth_to_grid(f_data, f_grid, j, i);
 	}
 }
 

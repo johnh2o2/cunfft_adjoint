@@ -1,21 +1,39 @@
+/* Implements the adjoint NFFT
+ * 
+ * (c) John Hoffman 2016
+ * jah5@princeton.edu
+ * 
+ */
 
+// local headers
+#include "typedefs.h"
+#include "filter.h"
+#include "utils.h"
+
+// the usual headers
 #include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
 
+// CUDA headers
 #include <cuda_runtime.h>
 #include <cufft.h>
 #include <helper_functions.h>
 #include <helper_cuda.h>
-#include "kernel.cu"
 
+
+// computes the adjoint NFFT and stores this in plan->f_hat
 void cuda_nfft_adjoint(plan *p){
-	int nblocks;
+
+	unsigned int nblocks;
 	nblocks = p->Ndata / BLOCK_SIZE;
 	while(nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
 
 	// move CPU data to GPU memory
 	copy_data_to_gpu(p);
+
+	// copy filter information + perform 
+	// precomputation
+	set_filter_properties(p);
  
 	// unequally spaced data -> equally spaced grid
 	fast_gaussian_gridding<<<nblocks, BLOCK_SIZE>>>(p->g_f_data, 
@@ -42,8 +60,10 @@ void cuda_nfft_adjoint(plan *p){
 	// FFT(gridded data) / FFT(filter)
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
+	divide_by_spectral_window <<< nblocks, BLOCK_SIZE >>> (p->g_f_hat, p->g_f_filter, p->Ngrid);
 
-	divide_by_spectral_window<<<nblocks, BLOCK_SIZE>>>(p->g_f_hat, p->g_f_filter, p->Ngrid);
+	// normalize (eq. 11 in Greengard & Lee 2004)	
+	normalize <<< nblocks, BLOCK_SIZE >>> (p->g_f_hat, p->Ngrid);
 
 	// Transfer back to device!
 	checkCudaErrors(cudaMemcpy(p->f_hat, p->g_f_hat, p->Ngrid * sizeof(Complex),
@@ -53,7 +73,3 @@ void cuda_nfft_adjoint(plan *p){
 	checkCudaErrors(cufftDestroy(cuplan));
 }
 
-void
-main(int argc, char *argv[]){
-	
-}
