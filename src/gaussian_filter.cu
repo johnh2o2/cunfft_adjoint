@@ -78,3 +78,14 @@ filter ( const unsigned int j_data, const unsigned int i_grid, const int m , fil
 	else mp = m; 
 	return f->E1[j_data] * powf(f->E2[j_data], m) * f->E3[mp];
 }
+
+__global__
+void
+normalize(Complex *f_hat, unsigned int Ngrid){
+	unsigned int i = get_index();
+	int k;
+	if ( i < Ngrid ){
+		k = i - Ngrid/2;
+		f_hat[i] *= sqrt(PI/g_fprops->tau) * expf(k * k * g_fprops->tau);
+	}
+}

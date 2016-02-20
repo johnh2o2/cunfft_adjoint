@@ -9,6 +9,7 @@
 #include "typedefs.h"
 #include "filter.h"
 #include "utils.h"
+#include "adjoint_kernel.cuh"
 
 // the usual headers
 #include <stdlib.h>

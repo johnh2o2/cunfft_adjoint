@@ -69,13 +69,4 @@ get_index(){
 	return blockIdx.x * BLOCK_SIZE + threadIdx.x;
 }
 
-__global__
-void
-normalize(Complex *f_hat, unsigned int Ngrid){
-	unsigned int i = get_index();
-	int k;
-	if ( i < Ngrid ){
-		k = i - Ngrid/2;
-		f_hat[i] *= sqrt(PI/g_fprops->tau) * expf(k * k * g_fprops->tau);
-	}
-}
+
