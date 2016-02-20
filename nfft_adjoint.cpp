@@ -21,6 +21,16 @@
 #include <helper_cuda.h>
 
 
+void init_cunfft(plan *p, dTyp *f, dTyp *x, unsigned int Ndata, unsigned int Ngrid){
+
+	p->Ndata = Ndata;
+	p->Ngrid = Ngrid;
+	p->x_data = (dTyp *) malloc( Ndata * sizeof(dTyp));
+	p->f_data = (dTyp *) malloc( Ngrid * sizeof(dTyp));
+
+	
+}
+
 // computes the adjoint NFFT and stores this in plan->f_hat
 void cuda_nfft_adjoint(plan *p){
 
