@@ -3,6 +3,7 @@
 #define TYPEDEFS_
 
 #define dTyp float
+#define PI 3.1415926535897932384626433832795028841971
 
 
 typedef struct {
@@ -24,6 +25,8 @@ typedef struct {
 	dTyp *g_x_data;
 
 	unsigned int Ndata, Ngrid, filter_radius;
+
+	filter_properties *fprops;
 } plan;
 
 #endif

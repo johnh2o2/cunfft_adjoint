@@ -1,5 +1,7 @@
 
-#include "utils.cu"
+#include "filter.h"
+#include "utils.h"
+#include "typedefs.h"
 
 __device__ void smooth_to_grid(Complex *f_data, Complex *f_grid, const unsigned int j, const unsigned int i){
 	dTyp val;
@@ -16,8 +18,9 @@ __device__ void smooth_to_grid(Complex *f_data, Complex *f_grid, const unsigned 
 }
 
 __global__ void fast_gridding(Complex *f_data, Complex *f_grid, 
-					const float *x_data, const unsigned int Ngrid, 
-					const unsigned int Ndata){
+		const float *x_data, const unsigned int Ngrid, 
+		const unsigned int Ndata){
+	
 	unsigned int i = get_index();
 	
 	if (i < Ndata) {

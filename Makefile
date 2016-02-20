@@ -13,22 +13,49 @@ EXECUTABLE      := cunfft_adjoint
 NVCC=nvcc
 CXX=g++
 CC=gcc
-SOURCES=
-
-cuda_lib=/usr/local/cuda/lib64
-cuda_inc=/usr/local/cuda/include
 
 BLOCK_SIZE=256
 
-NVCCFLAGS := -Xcompiler -fpic --ptxas-options=-v -DBLOCK_SIZE=$(BLOCK_SIZE) -arch $(ARCH)
-CXXFLAGS := -fPIC -DBLOCK_SIZE=$(BLOCK_SIZE)
-LINK := -lcufft -lm -lcudart -L$(cuda_lib)
+ALLFLAGS := -DBLOCK_SIZE=$(BLOCK_SIZE)
+NVCCFLAGS := -Xcompiler -fpic --ptxas-options=-v -arch $(ARCH)
+CXXFLAGS := -fPIC
+
+CUDA_LIB=/usr/local/cuda/lib64
+CUDA_INC=/usr/local/cuda/include
+
+LIBS := -lcufft -lm -lcudart
+
+###############################################################################
+
+CPP_FILES := $(wildcard src/*.cpp)
+CU_FILES  := $(wildcard src/*.cu)
+
+CPP_OBJ_FILES := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
+CU_OBJ_FILES := $(addprefix obj/,$(notdir $(CU_FILES:.cu=.o)))
+
+INCLUDE_DIRS := -I./inc
+INCLUDE_DIRS += -I$(CUDA_INC)
+
+LIB_DIRS := -L$(CUDA_LIB)
+
+LINK := $(LIBS) $(LIB_DIRS)
+
+NVCCFLAGS += $(ALLFLAGS) $(INCLUDE_DIRS)
+CXXFLAGS += $(ALLFLAGS) $(INCLUDE_DIRS)
 
 all : $(EXECUTABLE)
 
+$(EXECUTABLE): $(CPP_OBJ_FILES) $(CU_OBJ_FILES)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LINK)
 
-$(EXECUTABLE): 
-	$(NVCC) $(NVCCFLAGS) -o $(EXECUTABLE) $(SOURCES) $(LINK)
+$(CU_OBJ_FILES) : 
+	$(NVCC) $(NVCCFLAGS) -c src/$(*F).cu -o obj/$(*F).o
 
+$(CPP_OBJ_FILES) : 
+	$(CXX) $(CXXFLAGS) -c src/$(*F).cpp -o obj/$(*F).o
+
+.PHONY : clean
 clean : 
 	rm -f *o $(EXECUTABLE)
+
+print-%  : ; @echo $* = $($*)

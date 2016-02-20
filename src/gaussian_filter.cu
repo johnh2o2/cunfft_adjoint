@@ -5,9 +5,11 @@
  * 
  */
 
+#include "typedefs.h"
 #include "filter.h"
-#include "utils.cu"
+#include "utils.h"
 
+__host__
 // pre-computes values for the filter
 void set_filter_properties(plan *p){
 
@@ -41,8 +43,8 @@ void set_filter_properties(plan *p){
 	// Precompute E1, E2, E3 on GPU
 	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>(f, p->x_data, p->Ngrid, p->Ndata);
 
-	// set the global GPU pointer to this particular filter properties object
-	g_fprops = f;
+	// Set plan's filter_properties pointer to this particular filter properties object
+	p->fprops = f;
 
 }
 
@@ -70,8 +72,7 @@ set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngr
 
 __device__
 dTyp
-filter ( const unsigned int j_data, const unsigned int i_grid, const int m ){
-	filter_properties *f = g_fprops
+filter ( const unsigned int j_data, const unsigned int i_grid, const int m , filter_properties *f){
 	unsigned int mp;
 	if (m < 0) mp = -m;
 	else mp = m; 

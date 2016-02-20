@@ -1,4 +1,6 @@
 #include "typedefs.h"
+#include "utils.h"
+#include <stdlib.h>
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.

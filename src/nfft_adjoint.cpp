@@ -46,12 +46,12 @@ void cuda_nfft_adjoint(plan *p){
 	set_filter_properties(p);
  
 	// unequally spaced data -> equally spaced grid
-	fast_gaussian_gridding<<<nblocks, BLOCK_SIZE>>>(p->g_f_data, 
-		p->g_f_hat, p->g_x_data, p->Ngrid, p->Ndata);
+	fast_gridding<<<nblocks, BLOCK_SIZE>>>(p->g_f_data, 
+		p->g_f_hat, p->g_x_data, p->Ngrid, p->Ndata, p->fprops);
 
 	// (same as above, but for the filter)
-	fast_gaussian_gridding<<<nblocks, BLOCK_SIZE>>>(NULL, 
-		p->g_f_filter, p->g_x_data, p->Ngrid, p->Ndata);
+	fast_gridding<<<nblocks, BLOCK_SIZE>>>(NULL, 
+		p->g_f_filter, p->g_x_data, p->Ngrid, p->Ndata, p->fprops);
 
 	// make plan
 	cufftHandle cuplan;
