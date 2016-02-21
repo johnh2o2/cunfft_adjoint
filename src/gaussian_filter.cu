@@ -8,6 +8,8 @@
 #include "typedefs.h"
 #include "filter.h"
 #include "utils.h"
+#include <helper_cuda.h>
+#include <helper_functions.h>
 
 __host__
 // pre-computes values for the filter
@@ -17,16 +19,15 @@ void set_filter_properties(plan *p){
 	unsigned int nblocks = p->Ngrid / BLOCK_SIZE;
 
 	// Ensures that we have enough threads!
-	while (nblocks * BLOCK_SIZE < n) nblocks++;
+	while (nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
 
 	// malloc memory for filter_properties (on GPU)
 	filter_properties *f;
 	checkCudaErrors(cudaMalloc((void **) &f, sizeof(filter_properties *) ));
-
+	
 	checkCudaErrors(cudaMalloc((void **) &(f->E1), p->Ndata * sizeof(dTyp) ));
 	checkCudaErrors(cudaMalloc((void **) &(f->E2), p->Ndata * sizeof(dTyp) ));
 	checkCudaErrors(cudaMalloc((void **) &(f->E3), p->filter_radius * sizeof(dTyp) ));
-
 
 	// R    :  is the oversampling factor
 	dTyp R = ((dTyp) p->Ngrid) / p->Ndata;
@@ -55,13 +56,14 @@ void set_filter_properties(plan *p){
 /////////////////////////////////////////////
 __global__
 void
-set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngrid, const unsigned int Ndata ){
+set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngrid, 
+				const unsigned int Ndata ){
 	size_t i = get_index();
 	if ( i < Ndata){
 		unsigned int m = i * Ngrid / Ndata;
 		dTyp eps = x[i] - 2 * PI * m / Ngrid;
 		f->E1[i] = expf(- eps * eps / (4 * f->tau));
-		f->E2[i] = expf( eps * PI / (Ngrid * tau)); 
+		f->E2[i] = expf( eps * PI / (Ngrid * f->tau)); 
 	}
 	if ( i < f->filter_radius){
 		dTyp a = PI * PI * i * i / (Ngrid * Ngrid);
@@ -72,7 +74,9 @@ set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngr
 
 __device__
 dTyp
-filter ( const unsigned int j_data, const unsigned int i_grid, const int m , filter_properties *f){
+filter( const unsigned int j_data, const unsigned int i_grid, 
+				const int m , filter_properties *f){
+	
 	unsigned int mp;
 	if (m < 0) mp = -m;
 	else mp = m; 
@@ -81,11 +85,12 @@ filter ( const unsigned int j_data, const unsigned int i_grid, const int m , fil
 
 __global__
 void
-normalize(Complex *f_hat, unsigned int Ngrid){
+normalize(Complex *f_hat, unsigned int Ngrid, filter_properties *f){
+
 	unsigned int i = get_index();
 	int k;
 	if ( i < Ngrid ){
 		k = i - Ngrid/2;
-		f_hat[i] *= sqrt(PI/g_fprops->tau) * expf(k * k * g_fprops->tau);
+		f_hat[i].x *= sqrtf(PI/f->tau) * expf(k * k * f->tau);
 	}
 }

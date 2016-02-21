@@ -14,7 +14,7 @@ void copy_data_to_gpu(plan *p);
 void scale_x(float *x, size_t size);
 
 // GPU index from ID
-__device__ size_t get_index();
+__device__ unsigned int get_index();
 
 // normalizes FFT (see eq. 11 in Greengard & Lee 2004)
 __global__ void normalize(Complex *f_hat, unsigned int Ngrid);

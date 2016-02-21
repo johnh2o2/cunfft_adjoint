@@ -9,7 +9,7 @@
 #include "typedefs.h"
 #include "filter.h"
 #include "utils.h"
-#include "adjoint_kernel.cuh"
+#include "adjoint_kernel.h"
 
 // the usual headers
 #include <stdlib.h>
@@ -18,7 +18,7 @@
 // CUDA headers
 #include <cuda_runtime.h>
 #include <cufft.h>
-#include <helper_functions.h>
+//#include <helper_functions.h>
 #include <helper_cuda.h>
 
 
@@ -47,16 +47,16 @@ void cuda_nfft_adjoint(plan *p){
 	set_filter_properties(p);
  
 	// unequally spaced data -> equally spaced grid
-	fast_gridding<<<nblocks, BLOCK_SIZE>>>(p->g_f_data, 
+	fast_gridding<<< nblocks, BLOCK_SIZE >>>(p->g_f_data, 
 		p->g_f_hat, p->g_x_data, p->Ngrid, p->Ndata, p->fprops);
 
 	// (same as above, but for the filter)
-	fast_gridding<<<nblocks, BLOCK_SIZE>>>(NULL, 
+	fast_gridding<<< nblocks, BLOCK_SIZE >>>(NULL, 
 		p->g_f_filter, p->g_x_data, p->Ngrid, p->Ndata, p->fprops);
 
 	// make plan
 	cufftHandle cuplan;
-	checkCudaErrors(cufftMakePlan1d(&cuplan, p->Ngrid, CUFFT_C2C, 1));
+	checkCudaErrors(cufftPlan1d(&cuplan, p->Ngrid, CUFFT_C2C, 1));
 
 
 	// FFT(gridded data)
@@ -74,7 +74,7 @@ void cuda_nfft_adjoint(plan *p){
 	divide_by_spectral_window <<< nblocks, BLOCK_SIZE >>> (p->g_f_hat, p->g_f_filter, p->Ngrid);
 
 	// normalize (eq. 11 in Greengard & Lee 2004)	
-	normalize <<< nblocks, BLOCK_SIZE >>> (p->g_f_hat, p->Ngrid);
+	normalize<<< nblocks, BLOCK_SIZE >>>(p->g_f_hat, p->Ngrid, p->fprops);
 
 	// Transfer back to device!
 	checkCudaErrors(cudaMemcpy(p->f_hat, p->g_f_hat, p->Ngrid * sizeof(Complex),

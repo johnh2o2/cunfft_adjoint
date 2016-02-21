@@ -1,6 +1,7 @@
 #include "typedefs.h"
 #include "utils.h"
 #include <stdlib.h>
+#include <helper_cuda.h>
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
@@ -63,10 +64,8 @@ void set_x(float *x, size_t size){
 	}
 }
 
-__global__
-size_t
-get_index(){
-	return blockIdx.x * BLOCK_SIZE + threadIdx.x;
-}
+__device__
+unsigned int
+get_index(){ return blockIdx.x * BLOCK_SIZE + threadIdx.x; }
 
 

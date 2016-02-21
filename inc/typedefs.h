@@ -6,10 +6,13 @@
 #define PI 3.1415926535897932384626433832795028841971
 
 
-struct __builtin_align__(8) float2
+/*struct __builtin_align__(8) float2
   {
     float x, y;
   };
+*/
+
+#include <vector_types.h>
 
 typedef struct {
 	dTyp tau;
