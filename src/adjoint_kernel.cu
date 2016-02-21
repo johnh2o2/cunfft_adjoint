@@ -1,7 +1,12 @@
 
 #include "adjoint_kernel.cuh"
 
-__device__ void smooth_to_grid(Complex *f_data, Complex *f_grid, const unsigned int j, const unsigned int i, filter_properties *fprops){
+__device__ 
+void 
+smooth_to_grid(Complex *f_data, Complex *f_grid, 
+				const unsigned int j, const unsigned int i, 
+				filter_properties *fprops){
+
 	dTyp val;
 	for (unsigned int m = -g_fprops->filter_radius + 1; 
 			  m < g_fprops->filter_radius; 
@@ -15,9 +20,11 @@ __device__ void smooth_to_grid(Complex *f_data, Complex *f_grid, const unsigned 
 	}
 }
 
-__global__ void fast_gridding(Complex *f_data, Complex *f_grid, 
-		const float *x_data, const unsigned int Ngrid, 
-		const unsigned int Ndata, filter_properties *fprops){
+__global__ 
+void 
+fast_gridding(Complex *f_data, Complex *f_grid, 
+				const float *x_data, const unsigned int Ngrid, 
+				const unsigned int Ndata, filter_properties *fprops){
 	
 	unsigned int i = get_index();
 	
@@ -27,7 +34,9 @@ __global__ void fast_gridding(Complex *f_data, Complex *f_grid,
 	}
 }
 
-__global__ divide_by_spectral_window(Complex *sig, const Complex *filt,
+__global__ 
+void
+divide_by_spectral_window(Complex *sig, const Complex *filt,
 				const unsigned int N){
 	unsigned int i; 
 	if (i < N) sig[i].x = sig[i].x/filt[i].x;
