@@ -3,6 +3,7 @@
 #define TYPEDEFS_
 
 #include <vector_types.h>
+#include <stdio.h>
 
 #define dTyp float
 #define PI 3.1415926535897932384626433832795028841971
