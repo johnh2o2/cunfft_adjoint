@@ -5,10 +5,10 @@
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
-void copy_float_to_complex(float *a, Complex *b, unsigned int N);
+void copy_float_to_complex(dTyp *a, Complex *b, unsigned int N);
 
 // Rescale X to [0, 2pi)
-void scale_x(float *x, unsigned int size);
+void scale_x(dTyp *x, unsigned int size);
 
 // GPU index from ID
 __device__ unsigned int get_index();

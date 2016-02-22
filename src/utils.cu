@@ -7,14 +7,14 @@
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
-void copy_float_to_complex(float *a, Complex *b, unsigned int N){
+void copy_float_to_complex(dTyp *a, Complex *b, unsigned int N){
 	for (unsigned int i = 0; i < N; i++){
 		b[i].x = a[i];
 		b[i].y = 0;
 	}
 }
 
-void scale_x(float *x, unsigned int size){
+void scale_x(dTyp *x, unsigned int size){
 	// ensures that x \in [0, 2pi)
 
 	float range = x[size-1] - x[0];
