@@ -7,7 +7,7 @@
 #define dTyp float
 #define PI 3.1415926535897932384626433832795028841971
 
-enum {
+typedef enum {
 	CPU_FREE,
 	CUDA_FREE
 } free_type;
