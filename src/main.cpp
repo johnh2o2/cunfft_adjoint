@@ -10,11 +10,11 @@
 
 
 void print_plan(plan *p){
-	fprintf(stderr, "PLAN: \n\tp->Ngrid = %d\n\tp->Ndata = %d\n");
+	fprintf(stderr, "PLAN: \n\tp->Ngrid = %d\n\tp->Ndata = %d\n", p->Ngrid, p->Ndata);
 }
 
 int main(int argc, char *argv[]){
-	int N = 100;
+	unsigned int N = 100;
 	dTyp f[N], x[N];
 	
 	//cudaSetDevice(0);
