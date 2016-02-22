@@ -45,6 +45,8 @@ cuda_nfft_adjoint(
 		           p->fprops
 	);
 
+	checkCudaErrors(cudaGetLastError());
+
 	LOG("about to do fast_gridding (filter)");
 	// (same as above, but for the filter)
 	fast_gridding<<< nblocks, BLOCK_SIZE >>>(
@@ -56,6 +58,8 @@ cuda_nfft_adjoint(
 		           p->fprops
 	);
 
+	checkCudaErrors(cudaGetLastError());
+
 	LOG("planning cufftPlan");
 	// make plan
 	cufftHandle cuplan;
@@ -66,6 +70,9 @@ cuda_nfft_adjoint(
 		           1
     );
 
+	checkCudaErrors(cudaGetLastError());
+
+
 	LOG("doing FFT of gridded data.");
 	// FFT(gridded data)
 	cufftExecC2C(  cuplan, 
@@ -73,6 +80,8 @@ cuda_nfft_adjoint(
 				  (cufftComplex *)(p->g_f_hat), 
 				   CUFFT_FORWARD 
 	);
+
+	checkCudaErrors(cudaGetLastError());
 
 	LOG("doing FFT of filter.");
 	// FFT(filter)
@@ -82,7 +91,7 @@ cuda_nfft_adjoint(
 				   CUFFT_FORWARD 
 	);
 
-
+	checkCudaErrors(cudaGetLastError());
 
 	// FFT(gridded data) / FFT(filter)
 	nblocks = p->Ngrid / BLOCK_SIZE;
@@ -95,6 +104,8 @@ cuda_nfft_adjoint(
 			       p->Ngrid
 	);
 
+	checkCudaErrors(cudaGetLastError());
+
 	LOG("Normalizing");
 	// normalize (eq. 11 in Greengard & Lee 2004)	
 	normalize<<< nblocks, BLOCK_SIZE >>>(
@@ -102,6 +113,8 @@ cuda_nfft_adjoint(
 		           p->Ngrid, 
 		           p->fprops
     );
+
+    checkCudaErrors(cudaGetLastError());
 
 	LOG("Transferring data back to device");
 	// Transfer back to device!
