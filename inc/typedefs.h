@@ -13,6 +13,7 @@
 #define eprint(...) \
 	fprintf(stderr, "ERROR (%s, l%d): ", __FILE__, __LINE__);\
 	fprintf(stderr, __VA_ARGS__);
+#define LOG(msg) fprintf(stderr, "%s l%d: %s\n", __FILE__, __LINE__, msg)
 
 #define checkCudaErrors(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
