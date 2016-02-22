@@ -35,38 +35,75 @@ cuda_nfft_adjoint(
 	while(nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
  
 	// unequally spaced data -> equally spaced grid
-	fast_gridding<<< nblocks, BLOCK_SIZE >>>(p->g_f_data, 
-		p->g_f_hat, p->g_x_data, p->Ngrid, p->Ndata, p->fprops);
+	fast_gridding<<< nblocks, BLOCK_SIZE >>>(
+		           p->g_f_data, 
+		           p->g_f_hat, 
+		           p->g_x_data, 
+		           p->Ngrid, 
+		           p->Ndata, 
+		           p->fprops
+	);
 
 	// (same as above, but for the filter)
-	fast_gridding<<< nblocks, BLOCK_SIZE >>>(NULL, 
-		p->g_f_filter, p->g_x_data, p->Ngrid, p->Ndata, p->fprops);
+	fast_gridding<<< nblocks, BLOCK_SIZE >>>(
+		           NULL, 
+		           p->g_f_filter, 
+		           p->g_x_data, 
+		           p->Ngrid, 
+		           p->Ndata, 
+		           p->fprops
+	);
 
 	// make plan
 	cufftHandle cuplan;
-	cufftPlan1d(&cuplan, p->Ngrid, CUFFT_C2C, 1)
+	cufftPlan1d(
+		           &cuplan, 
+		           p->Ngrid, 
+		           CUFFT_C2C, 
+		           1
+    );
 
 	// FFT(gridded data)
-	cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_hat), 
-							(cufftComplex *)(p->g_f_hat), CUFFT_FORWARD )
+	cufftExecC2C(  cuplan, 
+		          (cufftComplex *)(p->g_f_hat), 
+				  (cufftComplex *)(p->g_f_hat), 
+				   CUFFT_FORWARD 
+	);
 
 	// FFT(filter)
-	cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_filter), 
-							(cufftComplex *)(p->g_f_filter), CUFFT_FORWARD )
+	cufftExecC2C(  cuplan, 
+				  (cufftComplex *)(p->g_f_filter), 
+				  (cufftComplex *)(p->g_f_filter), 
+				   CUFFT_FORWARD 
+	);
 
 
 
 	// FFT(gridded data) / FFT(filter)
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
-	divide_by_spectral_window <<< nblocks, BLOCK_SIZE >>> (p->g_f_hat, p->g_f_filter, p->Ngrid);
+	divide_by_spectral_window <<< nblocks, BLOCK_SIZE >>> (
+			       p->g_f_hat, 
+			       p->g_f_filter, 
+			       p->Ngrid
+	);
 
 	// normalize (eq. 11 in Greengard & Lee 2004)	
-	normalize<<< nblocks, BLOCK_SIZE >>>(p->g_f_hat, p->Ngrid, p->fprops);
+	normalize<<< nblocks, BLOCK_SIZE >>>(
+		           p->g_f_hat, 
+		           p->Ngrid, 
+		           p->fprops
+    );
 
 	// Transfer back to device!
-	checkCudaErrors(cudaMemcpy(p->f_hat, p->g_f_hat, p->Ngrid * sizeof(Complex),
-		cudaMemcpyDeviceToHost ));
+	checkCudaErrors(
+		cudaMemcpy(
+			       p->f_hat, 
+			       p->g_f_hat, 
+			       p->Ngrid * sizeof(Complex),
+		           cudaMemcpyDeviceToHost 
+		)
+    );
 
 	// Free plan memory.
 	cufftDestroy(cuplan);
