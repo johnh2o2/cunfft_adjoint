@@ -15,7 +15,7 @@
 #include <math.h>
 
 // CUDA headers
-#include <cuda_runtime.h>
+//#include <cuda_runtime.h>
 #include <cufft.h>
 //#include <helper_functions.h>
 //#include <helper_cuda.h>
