@@ -30,7 +30,7 @@ set_filter_properties(plan *p){
 
 	LOG("CPU malloc for filter_properties pointer *f");
 	// malloc memory for filter_properties (on GPU)
-	filter_properties *f;
+	filter_properties *f = (filter_properties *) malloc(sizeof(filter_properties));
 	f->E1 = (dTyp *)malloc(p->Ndata * sizeof(dTyp));
 	f->E2 = (dTyp *)malloc(p->Ndata * sizeof(dTyp));
 	f->E3 = (dTyp *)malloc(p->filter_radius * sizeof(dTyp));
