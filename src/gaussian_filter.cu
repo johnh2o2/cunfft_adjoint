@@ -33,11 +33,14 @@ set_filter_properties(plan *p){
 	filter_properties *f;
 	checkCudaErrors(cudaMalloc((void **) &f, sizeof(filter_properties *) ));
 	
-	LOG("cudaMalloc-ing space for E1, E2, E3");
+	LOG("cudaMalloc-ing space for E1");
 	checkCudaErrors(cudaMalloc((void **) &(f->E1), p->Ndata * sizeof(dTyp) ));
+	LOG("cudaMalloc-ing space for E2");
 	checkCudaErrors(cudaMalloc((void **) &(f->E2), p->Ndata * sizeof(dTyp) ));
+	LOG("cudaMalloc-ing space for E3");
 	checkCudaErrors(cudaMalloc((void **) &(f->E3), p->filter_radius * sizeof(dTyp) ));
 
+	LOG("setting R and tau");
 	// R    :  is the oversampling factor
 	dTyp R = ((dTyp) p->Ngrid) / p->Ndata;
 
