@@ -4,7 +4,7 @@
 
 #include <vector_types.h>
 
-#define cudaCheckErrors(msg) \
+#define checkCudaErrors(msg) \
     do { \
         cudaError_t __err = cudaGetLastError(); \
         if (__err != cudaSuccess) { \
