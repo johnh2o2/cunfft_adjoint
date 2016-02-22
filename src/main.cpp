@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
 
 	LOG("setting x");
 	dTyp range = x[N - 1] - x[0];
-	scale_x(&x);
+	scale_x(&x, Ndata);
 
 	LOG("done.");
 
