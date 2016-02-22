@@ -2,9 +2,7 @@
 #include "filter.h"
 #include <stdlib.h>
 
-#define eprint(...) \
-	fprintf(stderr, "ERROR (%s, l%d): ", __FILE__, __LINE__);\
-	fprintf(stderr, __VA_ARGS__);
+
 
 
 // Copies over a float array to Complex array
@@ -15,7 +13,6 @@ void copy_float_to_complex(float *a, Complex *b, size_t N){
 		b[i].y = 0;
 	}
 }
-
 
 void set_x(float *x, size_t size){
 	// ensures that x \in [0, 2pi)

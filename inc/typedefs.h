@@ -4,20 +4,22 @@
 
 #include <vector_types.h>
 
-#define checkCudaErrors(msg) \
-    do { \
-        cudaError_t __err = cudaGetLastError(); \
-        if (__err != cudaSuccess) { \
-            fprintf(stderr, "Fatal error: %s (%s at %s:%d)\n", \
-                msg, cudaGetErrorString(__err), \
-                __FILE__, __LINE__); \
-            fprintf(stderr, "*** FAILED - ABORTING\n"); \
-            exit(1); \
-        } \
-    } while (0)
-
 #define dTyp float
 #define PI 3.1415926535897932384626433832795028841971
+
+#define eprint(...) \
+	fprintf(stderr, "ERROR (%s, l%d): ", __FILE__, __LINE__);\
+	fprintf(stderr, __VA_ARGS__);
+
+#define checkCudaErrors(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr,"ERROR [%s, l%d]: %s\n", file, line, cudaGetErrorString(code));
+      if (abort) exit(code);
+   }
+}
 
 typedef float2 Complex;
 
