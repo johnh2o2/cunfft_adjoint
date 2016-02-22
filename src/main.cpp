@@ -13,6 +13,8 @@ int main(int argc, char *argv[]){
 	int N = 1000;
 	dTyp f[N], x[N];
 	
+	cudaSetDevice(0);
+
 	LOG("setting up data array.");
 	int i;
 	x[0] = 0;
