@@ -4,14 +4,27 @@
 
 #include <vector_types.h>
 
+#define cudaCheckErrors(msg) \
+    do { \
+        cudaError_t __err = cudaGetLastError(); \
+        if (__err != cudaSuccess) { \
+            fprintf(stderr, "Fatal error: %s (%s at %s:%d)\n", \
+                msg, cudaGetErrorString(__err), \
+                __FILE__, __LINE__); \
+            fprintf(stderr, "*** FAILED - ABORTING\n"); \
+            exit(1); \
+        } \
+    } while (0)
+
 #define dTyp float
 #define PI 3.1415926535897932384626433832795028841971
+
+typedef float2 Complex;
 
 typedef enum {
 	CPU_FREE,
 	CUDA_FREE
 } free_type;
-
 
 typedef struct {
 	dTyp tau;
@@ -20,8 +33,6 @@ typedef struct {
 	dTyp *E2;
 	dTyp *E3;
 } filter_properties;
-
-typedef float2 Complex;
 
 typedef struct {
 	// CPU variables

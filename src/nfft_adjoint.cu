@@ -17,7 +17,7 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 //#include <helper_functions.h>
-#include <helper_cuda.h>
+//#include <helper_cuda.h>
 
 
 
