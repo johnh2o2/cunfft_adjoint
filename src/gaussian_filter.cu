@@ -12,6 +12,8 @@
 //#include <helper_cuda.h>
 //#include <helper_functions.h>
 
+#define FILTER_RADIUS 6
+
 __global__
 void
 set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngrid, 
@@ -35,7 +37,8 @@ set_filter_properties(plan *p){
 	f->E2 = (dTyp *)malloc(p->Ndata * sizeof(dTyp));
 	f->E3 = (dTyp *)malloc(p->filter_radius * sizeof(dTyp));
 
-	f->filter_radius = p->filter_radius;
+	f->filter_radius = FILTER_RADIUS;
+	p->filter_radius = f->filter_radius;
 
 	LOG("setting R and tau (CPU)");
 	// R                :  is the oversampling factor
