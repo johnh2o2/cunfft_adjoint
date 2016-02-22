@@ -6,10 +6,8 @@
  */
 
 // local headers
-#include "typedefs.h"
-#include "filter.h"
-#include "utils.h"
-#include "adjoint_kernel.h"
+
+#include "nfft_adjoint.h"
 
 // the usual headers
 #include <stdlib.h>
