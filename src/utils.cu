@@ -1,8 +1,8 @@
-#include "typedefs.h"
 #include "utils.h"
 #include "filter.h"
 #include <stdlib.h>
 #include <helper_cuda.h>
+#include <cuda_runtime.h>
 #include <helper_functions.h>
 
 #define eprint(...) \
