@@ -76,9 +76,9 @@ init_plan(
 	// Set 
 	p->Ndata = Ndata;
 	p->Ngrid = Ngrid;
-	p->x_data = (dTyp *) malloc( Ndata * sizeof(dTyp));
-	p->f_data = (dTyp *) malloc( Ndata * sizeof(dTyp));
-	p->f_hat  = (dTyp *) malloc( Ngrid * sizeof(dTyp));
+	p->x_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
+	p->f_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
+	p->f_hat  = (Complex *) malloc( Ngrid * sizeof(dTyp));
 
 	LOG("memcpy x and f to plan");
 	memcpy(p->x_data, x, Ndata * sizeof(dTyp));
