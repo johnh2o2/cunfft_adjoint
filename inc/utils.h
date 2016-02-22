@@ -15,7 +15,7 @@ __device__ unsigned int get_index();
 
 __host__
 void
-init_cunfft(
+init_plan(
 	plan 			*p, 
 	dTyp 			*f, 
 	dTyp 			*x, 

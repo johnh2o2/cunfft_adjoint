@@ -1,5 +1,6 @@
 
 #include "typedefs.h"
+#include "utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -21,7 +22,7 @@ int main(int argc, char *argv[]){
 
 	plan p;
 
-	init_cunfft(&p, f, x, N, N * 5);
+	init_plan(&p, f, x, N, N * 5);
 
 	cuda_nfft_adjoint(&p);
 
