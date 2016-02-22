@@ -11,6 +11,11 @@
 #include <helper_cuda.h>
 #include <helper_functions.h>
 
+__global__
+void
+set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngrid, 
+				const unsigned int Ndata );
+
 // pre-computes values for the filter
 __host__
 void 
