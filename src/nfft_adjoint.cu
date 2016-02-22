@@ -44,22 +44,16 @@ cuda_nfft_adjoint(
 
 	// make plan
 	cufftHandle cuplan;
-	checkCudaErrors(
-		cufftPlan1d(&cuplan, p->Ngrid, CUFFT_C2C, 1)
-	);
-
+	cufftPlan1d(&cuplan, p->Ngrid, CUFFT_C2C, 1)
 
 	// FFT(gridded data)
-	checkCudaErrors(
-		cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_hat), 
+	cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_hat), 
 							(cufftComplex *)(p->g_f_hat), CUFFT_FORWARD )
-	);
 
 	// FFT(filter)
-	checkCudaErrors(
-		cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_filter), 
+	cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_filter), 
 							(cufftComplex *)(p->g_f_filter), CUFFT_FORWARD )
-	);
+
 
 
 	// FFT(gridded data) / FFT(filter)
@@ -75,6 +69,6 @@ cuda_nfft_adjoint(
 		cudaMemcpyDeviceToHost ));
 
 	// Free plan memory.
-	checkCudaErrors(cufftDestroy(cuplan));
+	cufftDestroy(cuplan);
 }
 
