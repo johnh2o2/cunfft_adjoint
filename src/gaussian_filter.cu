@@ -8,6 +8,8 @@
 #include "typedefs.h"
 #include "filter.h"
 #include "utils.h"
+#include <stdlib.h>
+#include <stdio.h>
 //#include <helper_cuda.h>
 //#include <helper_functions.h>
 
