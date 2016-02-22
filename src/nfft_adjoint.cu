@@ -11,6 +11,7 @@
 
 // the usual headers
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 
 // CUDA headers
