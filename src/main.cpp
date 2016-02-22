@@ -9,6 +9,10 @@
 #define Random ((dTyp) (rand() % rmax))/rmax
 
 
+void print_plan(plan *p){
+	fprintf(stderr, "PLAN: \n\tp->Ngrid = %d\n\tp->Ndata = %d\n");
+}
+
 int main(int argc, char *argv[]){
 	int N = 1000;
 	dTyp f[N], x[N];
@@ -28,6 +32,7 @@ int main(int argc, char *argv[]){
 	
 	LOG("about to do init_plan.");
 	init_plan(&p, f, x, N, N * 5);
+	print_plan(&p);
 
 	LOG("about to do nfft adjoint.");
 	cuda_nfft_adjoint(&p);
