@@ -26,6 +26,11 @@ int main(int argc, char *argv[]){
 	for(i=1; i < N; i++) x[i] = (x[i] / x[i-1]) * 2 * PI;
 
 	for(i=0; i < N; i++) f[i] = cos(freq * x[i]);
+
+	LOG("setting x");
+	dTyp range = x[N - 1] - x[0];
+	set_x(&x);
+
 	LOG("done.");
 
 	plan p;

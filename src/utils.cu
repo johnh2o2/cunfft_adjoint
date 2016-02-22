@@ -7,14 +7,14 @@
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
-void copy_float_to_complex(float *a, Complex *b, size_t N){
+void copy_float_to_complex(float *a, Complex *b, unsigned int N){
 	for (unsigned int i = 0; i < N; i++){
 		b[i].x = a[i];
 		b[i].y = 0;
 	}
 }
 
-void set_x(float *x, size_t size){
+void scale_x(float *x, unsigned int size){
 	// ensures that x \in [0, 2pi)
 
 	float range = x[size-1] - x[0];
@@ -77,7 +77,8 @@ init_plan(
 	p->Ndata = Ndata;
 	p->Ngrid = Ngrid;
 	p->x_data = (dTyp *) malloc( Ndata * sizeof(dTyp));
-	p->f_data = (dTyp *) malloc( Ngrid * sizeof(dTyp));
+	p->f_data = (dTyp *) malloc( Ndata * sizeof(dTyp));
+	p->f_hat  = (dTyp *) malloc( Ngrid * sizeof(dTyp));
 
 	LOG("memcpy x and f to plan");
 	memcpy(p->x_data, x, Ndata * sizeof(dTyp));
