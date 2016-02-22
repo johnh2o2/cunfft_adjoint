@@ -52,10 +52,10 @@ __global__
 void
 divide_by_spectral_window( 
 
-	Complex 		*sig, 
-	const Complex 		*filt,
+	Complex 		    *sig, 
+	Complex 		*filt,
 	const unsigned int 	N
 ){
 	unsigned int i = get_index();
-	if (i < N) sig[i].x = sig[i].x/filt[i].x;
+	if (i < N) sig[i].x /= filt[i].x;
 }

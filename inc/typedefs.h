@@ -23,7 +23,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 {
    if (code != cudaSuccess) 
    {
-   	  eprint("%s\n", cudaGetErrorString(code));
+   	  fprintf(stderr, "ERROR %-24s L[%-5d]: %s\n", __FILE__, __LINE__, cudaGetErrorString(code));
       if (abort) exit(code);
    }
 }
