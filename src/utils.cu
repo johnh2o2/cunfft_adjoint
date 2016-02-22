@@ -33,10 +33,10 @@ get_index(){ return blockIdx.x * BLOCK_SIZE + threadIdx.x; }
 void free_filter_properties(filter_properties *f, free_type how_to_free){
 	switch(how_to_free){
 		case CUDA_FREE:
-			cudaCheckErrors(cudaFree(f->E1));
-			cudaCheckErrors(cudaFree(f->E2));
-			cudaCheckErrors(cudaFree(f->E3));
-			cudaCheckErrors(cudaFree(f));
+			checkCudaErrors(cudaFree(f->E1));
+			checkCudaErrors(cudaFree(f->E2));
+			checkCudaErrors(cudaFree(f->E3));
+			checkCudaErrors(cudaFree(f));
 			break;
 		case CPU_FREE:
 			free(f->E1);
@@ -56,10 +56,10 @@ void free_plan(plan *p){
 	free(p->f_data);
 	free_filter_properties(p->fprops, CUDA_FREE);
 
-	cudaCheckErrors(cudaFree(p->g_f_hat));
-	cudaCheckErrors(cudaFree(p->g_f_filter));
-	cudaCheckErrors(cudaFree(p->g_f_data));
-	cudaCheckErrors(cudaFree(p->g_x_data));
+	checkCudaErrors(cudaFree(p->g_f_hat));
+	checkCudaErrors(cudaFree(p->g_f_filter));
+	checkCudaErrors(cudaFree(p->g_f_data));
+	checkCudaErrors(cudaFree(p->g_x_data));
 }
 
 __host__
