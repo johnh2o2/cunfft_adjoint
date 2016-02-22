@@ -14,10 +14,10 @@ void print_plan(plan *p){
 }
 
 int main(int argc, char *argv[]){
-	int N = 1000;
+	int N = 100;
 	dTyp f[N], x[N];
 	
-	cudaSetDevice(0);
+	//cudaSetDevice(0);
 
 	LOG("setting up data array.");
 	int i;

@@ -72,55 +72,60 @@ init_plan(
 	unsigned int 	Ngrid
 
 ){
-
+	LOG("in init_plan -- mallocing for CPU");
 	// Set 
 	p->Ndata = Ndata;
 	p->Ngrid = Ngrid;
 	p->x_data = (dTyp *) malloc( Ndata * sizeof(dTyp));
 	p->f_data = (dTyp *) malloc( Ngrid * sizeof(dTyp));
 
+	LOG("memcpy x and f to plan");
 	memcpy(p->x_data, x, Ndata * sizeof(dTyp));
 	memcpy(p->f_data, f, Ndata * sizeof(dTyp));
 
 	// Allocate GPU memory
+	LOG("cudaMalloc -- p->g_f_data");
 	checkCudaErrors(
 		cudaMalloc((void **) &(p->g_f_data), 
 			p->Ndata * sizeof(Complex))
 	);
+	LOG("cudaMalloc -- p->g_x_data");
 	checkCudaErrors(
 		cudaMalloc((void **) &(p->g_x_data), 
-			p->Ndata * sizeof(float))
+			p->Ndata * sizeof(dTyp))
 	);
+	LOG("cudaMalloc -- p->g_f_hat");
 	checkCudaErrors(
 		cudaMalloc((void **) &(p->g_f_hat), 
 			p->Ngrid * sizeof(Complex))
 	);
+
+	LOG("cudaMalloc -- p->g_f_filter");
 	checkCudaErrors(
 		cudaMalloc((void **) &(p->g_f_filter), 
 			p->Ngrid * sizeof(Complex))
 	);
 
-	checkCudaErrors(
-		cudaMalloc((void **) &(p->fprops), 
-			p->Ngrid * sizeof(Complex))
-	);
-
+	LOG("copying f_data to f_data_complex");
 	// "Cast" float array to Complex array
 	Complex f_data_complex[p->Ndata];
 	copy_float_to_complex(p->f_data, f_data_complex, p->Ndata);
 
+	LOG("cudaMemcpy f_data_complex ==> p->g_f_data");
 	// Copy f_j -> GPU
 	checkCudaErrors(
 		cudaMemcpy(p->g_f_data, f_data_complex, 
 			p->Ndata * sizeof(float), cudaMemcpyHostToDevice)
 	);
 
+	LOG("cudaMemcpy p->x_data ==> p->g_x_data");
 	// Copy x_j -> GPU
 	checkCudaErrors(
 		cudaMemcpy(p->g_x_data, p->x_data, 
 			p->Ndata * sizeof(float), cudaMemcpyHostToDevice)
 	);
 
+	LOG("done here, calling set_filter_properties");
 	// copy filter information + perform 
 	// precomputation
 	set_filter_properties(p);
