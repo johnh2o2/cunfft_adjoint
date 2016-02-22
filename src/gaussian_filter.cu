@@ -11,9 +11,10 @@
 #include <helper_cuda.h>
 #include <helper_functions.h>
 
-__host__
 // pre-computes values for the filter
-void set_filter_properties(plan *p){
+__host__
+void 
+set_filter_properties(plan *p){
 
 	// nblocks x BLOCK_SIZE threads
 	unsigned int nblocks = p->Ngrid / BLOCK_SIZE;

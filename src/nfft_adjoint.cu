@@ -22,29 +22,18 @@
 #include <helper_cuda.h>
 
 
-void init_cunfft(plan *p, dTyp *f, dTyp *x, unsigned int Ndata, unsigned int Ngrid){
-
-	p->Ndata = Ndata;
-	p->Ngrid = Ngrid;
-	p->x_data = (dTyp *) malloc( Ndata * sizeof(dTyp));
-	p->f_data = (dTyp *) malloc( Ngrid * sizeof(dTyp));
-
-	
-}
 
 // computes the adjoint NFFT and stores this in plan->f_hat
-void cuda_nfft_adjoint(plan *p){
+__host__
+void 
+cuda_nfft_adjoint(
+	plan 			*p
+
+){
 
 	unsigned int nblocks;
 	nblocks = p->Ndata / BLOCK_SIZE;
 	while(nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
-
-	// move CPU data to GPU memory
-	copy_data_to_gpu(p);
-
-	// copy filter information + perform 
-	// precomputation
-	set_filter_properties(p);
  
 	// unequally spaced data -> equally spaced grid
 	fast_gridding<<< nblocks, BLOCK_SIZE >>>(p->g_f_data, 
@@ -56,16 +45,22 @@ void cuda_nfft_adjoint(plan *p){
 
 	// make plan
 	cufftHandle cuplan;
-	checkCudaErrors(cufftPlan1d(&cuplan, p->Ngrid, CUFFT_C2C, 1));
+	checkCudaErrors(
+		cufftPlan1d(&cuplan, p->Ngrid, CUFFT_C2C, 1)
+	);
 
 
 	// FFT(gridded data)
-	checkCudaErrors(cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_hat), 
-							(cufftComplex *)(p->g_f_hat), CUFFT_FORWARD ));
+	checkCudaErrors(
+		cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_hat), 
+							(cufftComplex *)(p->g_f_hat), CUFFT_FORWARD )
+	);
 
 	// FFT(filter)
-	checkCudaErrors(cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_filter), 
-							(cufftComplex *)(p->g_f_filter), CUFFT_FORWARD ));
+	checkCudaErrors(
+		cufftExecC2C(cuplan, (cufftComplex *)(p->g_f_filter), 
+							(cufftComplex *)(p->g_f_filter), CUFFT_FORWARD )
+	);
 
 
 	// FFT(gridded data) / FFT(filter)

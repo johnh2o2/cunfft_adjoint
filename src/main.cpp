@@ -20,10 +20,12 @@ int main(int argc, char *argv[]){
 	for(i=0; i < N; i++) f[i] = cos(freq * x[i]);
 
 	plan p;
-	p.Ndata = N;
-	p.Ngrid = 5*N;
 
-	p.x_data = (dTyp *) malloc(p.Ndata * sizeof(dTyp) );
-	p.f_data = (dTyp *) malloc(p.Ngrid * sizeof(dTyp) );
+	init_cunfft(&p, f, x, N, N * 5);
+
+	cuda_nfft_adjoint(&p);
+
+	free_plan(&p);
+
 	return EXIT_SUCCESS;
 }

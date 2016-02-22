@@ -2,17 +2,16 @@
 #ifndef TYPEDEFS_
 #define TYPEDEFS_
 
+#include <vector_types.h>
+
 #define dTyp float
 #define PI 3.1415926535897932384626433832795028841971
 
+enum {
+	CPU_FREE,
+	CUDA_FREE
+} free_type;
 
-/*struct __builtin_align__(8) float2
-  {
-    float x, y;
-  };
-*/
-
-#include <vector_types.h>
 
 typedef struct {
 	dTyp tau;
@@ -25,6 +24,7 @@ typedef struct {
 typedef float2 Complex;
 
 typedef struct {
+	// CPU variables
 	dTyp *x_data, *f_data;
 	Complex *f_hat;
 
@@ -36,5 +36,8 @@ typedef struct {
 
 	filter_properties *fprops;
 } plan;
+
+void free_filter_properties(filter_properties *f, free_type how_to_free);
+void free_plan(plan *p);
 
 #endif

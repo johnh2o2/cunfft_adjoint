@@ -7,16 +7,26 @@
 // TODO: Find a more efficient/sensible way to do this.
 void copy_float_to_complex(float *a, Complex *b, size_t N);
 
-// Allocates and transfers plan data to GPU memory
-void copy_data_to_gpu(plan *p);
-
 // Rescale X to [0, 2pi)
 void scale_x(float *x, size_t size);
 
 // GPU index from ID
 __device__ unsigned int get_index();
 
-// normalizes FFT (see eq. 11 in Greengard & Lee 2004)
-__global__ void normalize(Complex *f_hat, unsigned int Ngrid);
+__host__
+void
+init_cunfft(
+	plan 			*p, 
+	dTyp 			*f, 
+	dTyp 			*x, 
+	unsigned int 	Ndata, 
+	unsigned int 	Ngrid
+);
+
+__host__
+void 
+free_plan(
+	plan            *p
+);
 
 #endif
