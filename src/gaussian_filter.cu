@@ -41,13 +41,12 @@ set_filter_properties(plan *p){
 	// R                :  is the oversampling factor
 	dTyp R = ((dTyp) p->Ngrid) / p->Ndata;
 
-
 	// tau              :  is the characteristic length scale for the filter 
 	//                     (not to be confused with the filter_radius)
 	f->tau = (1.0 / (p->Ngrid * p->Ngrid)) * ( PI / (R* (R - 0.5)) ) * p->filter_radius;
 
-	LOG("cudaMalloc f");
-	checkCudaErrors(cudaMalloc((void **) &f, sizeof(filter_properties) ));
+	//LOG("cudaMalloc f");
+	//checkCudaErrors(cudaMalloc((void **) &f, sizeof(filter_properties) ));
 	
 	LOG("cudaMalloc f->E1");
 	checkCudaErrors(cudaMalloc((void **) &(f->E1), p->Ndata * sizeof(dTyp) ));
