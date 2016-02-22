@@ -28,7 +28,7 @@ __global__
 void
 divide_by_spectral_window(
 	Complex 		*sig, 
-	const Complex 		*filt, 
+	Complex 		*filt, 
 	const unsigned int 	N
 );
 
