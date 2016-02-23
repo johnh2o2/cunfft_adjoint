@@ -32,6 +32,12 @@ cuda_nfft_adjoint(
 	plan 			*p
 
 ){
+	int i;
+	for (i=0; i < p->Ngrid; p++) {
+		fprintf(stderr, "p->g_f_filter: %d/%d\n", i+1, p->Ngrid);
+		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
+		checkCudaErrors(cudaGetLastError());
+	}
 
 	unsigned int nblocks;
 	nblocks = p->Ndata / BLOCK_SIZE;
@@ -99,6 +105,8 @@ cuda_nfft_adjoint(
 	// FFT(gridded data) / FFT(filter)
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
+
+	checkCudaErrors(cudaGetLastError());
 
 	int i;
 	for (i=0; i < p->Ngrid; p++) {
