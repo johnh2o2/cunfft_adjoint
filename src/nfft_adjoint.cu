@@ -75,6 +75,7 @@ cuda_nfft_adjoint(
 
 	LOG("planning cufftPlan");
 	// make plan
+	/*
 	cufftHandle cuplan;
 	cufftPlan1d(
 		           &cuplan, 
@@ -82,7 +83,7 @@ cuda_nfft_adjoint(
 		           CUFFT_C2C, 
 		           1
     );
-	/*
+	
 	checkCudaErrors(cudaGetLastError());
 
 	cufftComplex *gfhat_temp, gffilter_temp;
