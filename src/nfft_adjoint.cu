@@ -39,7 +39,7 @@ cuda_nfft_adjoint(
  
 
 	int i;
-	for (i=0; i < p->Ngrid; p++) {
+	for (i=0; i < p->Ngrid; i++) {
 		fprintf(stderr, "p->g_f_filter: %d/%d\n", i+1, p->Ngrid);
 		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
 		checkCudaErrors(cudaGetLastError());
