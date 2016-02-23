@@ -72,6 +72,7 @@ cuda_nfft_adjoint(
 
 	checkCudaErrors(cudaGetLastError());
 
+	/*
 	LOG("planning cufftPlan");
 	// make plan
 	cufftHandle cuplan;
@@ -95,7 +96,7 @@ cuda_nfft_adjoint(
 
 	checkCudaErrors(cudaGetLastError());
 
-	/*LOG("doing FFT of filter.");
+	LOG("doing FFT of filter.");
 	// FFT(filter)
 	cufftExecC2C(  cuplan, 
 				  (cufftComplex *)(p->g_f_filter), 
@@ -148,9 +149,9 @@ cuda_nfft_adjoint(
 		)
     );
 
-	LOG("cufftDestroy(cuplan)");
+	//LOG("cufftDestroy(cuplan)");
 	// Free plan memory.
-	cufftDestroy(cuplan);
+	//cufftDestroy(cuplan);
 }
 
 
