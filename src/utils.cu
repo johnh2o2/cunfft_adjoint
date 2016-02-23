@@ -87,23 +87,23 @@ init_plan(
 	// Allocate GPU memory
 	LOG("cudaMalloc -- p->g_f_data");
 	checkCudaErrors(
-		cudaMalloc((void **) &(p->g_f_data), 
+		cudaMalloc((void **) &p->g_f_data, 
 			p->Ndata * sizeof(Complex))
 	);
 	LOG("cudaMalloc -- p->g_x_data");
 	checkCudaErrors(
-		cudaMalloc((void **) &(p->g_x_data), 
+		cudaMalloc((void **) &p->g_x_data, 
 			p->Ndata * sizeof(dTyp))
 	);
 	LOG("cudaMalloc -- p->g_f_hat");
 	checkCudaErrors(
-		cudaMalloc((void **) &(p->g_f_hat), 
+		cudaMalloc((void **) &p->g_f_hat, 
 			p->Ngrid * sizeof(Complex))
 	);
 
 	LOG("cudaMalloc -- p->g_f_filter");
 	checkCudaErrors(
-		cudaMalloc((void **) &(p->g_f_filter), 
+		cudaMalloc((void **) &p->g_f_filter, 
 			p->Ngrid * sizeof(Complex))
 	);
 

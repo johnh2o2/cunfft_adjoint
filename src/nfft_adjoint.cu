@@ -72,7 +72,7 @@ cuda_nfft_adjoint(
 
 	checkCudaErrors(cudaGetLastError());
 
-	/*
+
 	LOG("planning cufftPlan");
 	// make plan
 	cufftHandle cuplan;
@@ -82,8 +82,12 @@ cuda_nfft_adjoint(
 		           CUFFT_C2C, 
 		           1
     );
-
+	/*
 	checkCudaErrors(cudaGetLastError());
+
+	cufftComplex *gfhat_temp, gffilter_temp;
+	cudaMalloc((void **) &gfhat_temp, p->Ngrid * sizeof(cufftComplex));
+	cudaMalloc((void **) &gffilter_temp, p->Ngrid * sizeof(cufftComplex));
 
 
 	LOG("doing FFT of gridded data.");
@@ -106,8 +110,7 @@ cuda_nfft_adjoint(
 
 	checkCudaErrors(cudaGetLastError());
 	*/
-
-	// FFT(gridded data) / FFT(filter)
+	
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
 
@@ -119,6 +122,13 @@ cuda_nfft_adjoint(
 		checkCudaErrors(cudaGetLastError());
 	}
 
+	for (i=0; i < p->Ngrid; i++) {
+		fprintf(stderr, "p->g_f_hat: %d/%d\n", i+1, p->Ngrid);
+		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_hat, p->Ngrid);
+		checkCudaErrors(cudaGetLastError());
+	}
+
+	// FFT(gridded data) / FFT(filter)
 	LOG("Dividing by spectral window.");
 	divide_by_spectral_window <<< nblocks, BLOCK_SIZE >>> (
 			       p->g_f_hat, 
