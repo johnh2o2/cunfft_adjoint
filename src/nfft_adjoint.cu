@@ -95,7 +95,7 @@ cuda_nfft_adjoint(
 
 	checkCudaErrors(cudaGetLastError());
 
-	LOG("doing FFT of filter.");
+	/*LOG("doing FFT of filter.");
 	// FFT(filter)
 	cufftExecC2C(  cuplan, 
 				  (cufftComplex *)(p->g_f_filter), 
@@ -104,6 +104,7 @@ cuda_nfft_adjoint(
 	);
 
 	checkCudaErrors(cudaGetLastError());
+	*/
 
 	// FFT(gridded data) / FFT(filter)
 	nblocks = p->Ngrid / BLOCK_SIZE;
