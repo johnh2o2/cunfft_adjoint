@@ -22,6 +22,9 @@
 
 
 
+__global__ void access(const Complex *a, unsigned int index){
+	Complex junk = a[index];
+}
 // computes the adjoint NFFT and stores this in plan->f_hat
 __host__
 void 
@@ -139,7 +142,4 @@ cuda_nfft_adjoint(
 	cufftDestroy(cuplan);
 }
 
-__global__ void access(const Complex *a, unsigned int index){
-	Complex junk = a[index];
-}
 
