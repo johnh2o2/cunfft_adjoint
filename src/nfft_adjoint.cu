@@ -44,7 +44,7 @@ cuda_nfft_adjoint(
 		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
 		checkCudaErrors(cudaGetLastError());
 	}
-
+	/*
 	
  	LOG("about to do fast_gridding");
 	// unequally spaced data -> equally spaced grid
@@ -75,7 +75,7 @@ cuda_nfft_adjoint(
 
 	LOG("planning cufftPlan");
 	// make plan
-	/*
+	
 	cufftHandle cuplan;
 	cufftPlan1d(
 		           &cuplan, 
