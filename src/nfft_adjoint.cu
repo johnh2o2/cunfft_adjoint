@@ -97,6 +97,13 @@ cuda_nfft_adjoint(
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
 
+	int i;
+	for (i=0; i < p->Ngrid; p++) {
+		fprintf(stderr, "p->g_f_filter: %d/%d\n", i+1, p->Ngrid);
+		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
+		checkCudaErrors(cudaGetLastError());
+	}
+
 	LOG("Dividing by spectral window.");
 	divide_by_spectral_window <<< nblocks, BLOCK_SIZE >>> (
 			       p->g_f_hat, 
@@ -130,5 +137,9 @@ cuda_nfft_adjoint(
 	LOG("cufftDestroy(cuplan)");
 	// Free plan memory.
 	cufftDestroy(cuplan);
+}
+
+__global__ void access(const Complex *a, unsigned int index){
+	Complex junk = a[index];
 }
 

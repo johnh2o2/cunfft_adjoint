@@ -6,8 +6,8 @@
 __device__ 
 void 
 smooth_to_grid( 
-	Complex 		*f_data, 
-	Complex 		*f_grid, 
+	Complex 		    *f_data, 
+	Complex 		    *f_grid, 
 	const unsigned int 	j, 
 	const unsigned int 	i, 
 	filter_properties 	*fprops
@@ -16,8 +16,8 @@ smooth_to_grid(
 __global__ 
 void 
 fast_gridding(
-	Complex 		*f_data, 
-	Complex 		*f_grid, 
+	Complex 		    *f_data, 
+	Complex 		    *f_grid, 
 	const float 		*x_data, 
 	const unsigned int 	Ngrid, 
 	const unsigned int 	Ndata, 
@@ -27,8 +27,8 @@ fast_gridding(
 __global__ 
 void
 divide_by_spectral_window(
-	Complex 		*sig, 
-	Complex 		*filt, 
+	Complex 		    *sig, 
+	const Complex 		*filt, 
 	const unsigned int 	N
 );
 

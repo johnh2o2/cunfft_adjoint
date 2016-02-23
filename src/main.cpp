@@ -39,6 +39,8 @@ int main(int argc, char *argv[]){
 	init_plan(&p, f, x, N, N * 5);
 	print_plan(&p);
 
+	
+
 	LOG("about to do nfft adjoint.");
 	cuda_nfft_adjoint(&p);
 
