@@ -32,6 +32,12 @@ cuda_nfft_adjoint(
 	plan 			*p
 
 ){
+
+	unsigned int nblocks;
+	nblocks = p->Ndata / BLOCK_SIZE;
+	while(nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
+ 
+
 	int i;
 	for (i=0; i < p->Ngrid; p++) {
 		fprintf(stderr, "p->g_f_filter: %d/%d\n", i+1, p->Ngrid);
@@ -39,10 +45,7 @@ cuda_nfft_adjoint(
 		checkCudaErrors(cudaGetLastError());
 	}
 
-	unsigned int nblocks;
-	nblocks = p->Ndata / BLOCK_SIZE;
-	while(nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
- 
+	
  	LOG("about to do fast_gridding");
 	// unequally spaced data -> equally spaced grid
 	fast_gridding<<< nblocks, BLOCK_SIZE >>>(
