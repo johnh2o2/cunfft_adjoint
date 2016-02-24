@@ -71,6 +71,8 @@ set_filter_properties(plan *p){
 	// Precompute E1, E2, E3 on GPU
 	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>(d_f, p->x_data, p->Ngrid, p->Ndata);
 
+	checkCudaErrors(cudaGetLastError());
+
 	LOG("setting plan->fprops to this filter_properties pointer");
 	// Set plan's filter_properties pointer to this particular filter properties object
 	p->fprops = d_f;
@@ -86,7 +88,7 @@ __global__
 void
 set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngrid, 
 				const unsigned int Ndata ){
-	size_t i = get_index();
+	unsigned int i = get_index();
 	if ( i < Ndata){
 		unsigned int m = i * Ngrid / Ndata;
 		dTyp eps = x[i] - 2 * PI * m / Ngrid;
@@ -96,6 +98,7 @@ set_gpu_filter_properties( filter_properties *f, dTyp *x, const unsigned int Ngr
 	if ( i < f->filter_radius){
 		dTyp a = PI * PI * i * i / (Ngrid * Ngrid);
 		f->E3[i] = expf( -a / f->tau);
+		
 	}
 	
 }
