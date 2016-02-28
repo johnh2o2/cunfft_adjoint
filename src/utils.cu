@@ -107,6 +107,8 @@ init_plan(
 			p->Ngrid * sizeof(Complex))
 	);
 
+	cudaCheckErrors(cudaDeviceSynchronize());
+
 	LOG("copying f_data to f_data_complex");
 	// "Cast" float array to Complex array
 	Complex f_data_complex[p->Ndata];
@@ -125,6 +127,8 @@ init_plan(
 		cudaMemcpy(p->g_x_data, p->x_data, 
 			p->Ndata * sizeof(float), cudaMemcpyHostToDevice)
 	);
+
+	checkCudaErrors(cudaDeviceSynchronize());
 
 	LOG("done here, calling set_filter_properties");
 	// copy filter information + perform 
