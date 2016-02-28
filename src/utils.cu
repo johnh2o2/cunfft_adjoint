@@ -73,10 +73,10 @@ void free_plan(plan *p){
 	LOG("p->g_x_data");
 	checkCudaErrors(cudaFree(p->g_x_data));
 
-	LOG("p")
+	LOG("p");
 	free(p);
 
-	LOG("DONE!!")
+	LOG("DONE!!");
 }
 
 __host__
