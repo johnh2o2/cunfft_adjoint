@@ -44,7 +44,7 @@ cuda_nfft_adjoint(
 		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
 		checkCudaErrors(cudaGetLastError());
 	}
-	/*
+	
 
 	LOG("about to do fast_gridding");
 	// unequally spaced data -> equally spaced grid
@@ -109,7 +109,6 @@ cuda_nfft_adjoint(
 	);
 
 	checkCudaErrors(cudaGetLastError());
-	*/
 
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while (nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
@@ -160,9 +159,9 @@ cuda_nfft_adjoint(
 	);
 
 	checkCudaErrors(cudaGetLastError());
-	//LOG("cufftDestroy(cuplan)");
+	LOG("cufftDestroy(cuplan)");
 	// Free plan memory.
-	//cufftDestroy(cuplan);
+	cufftDestroy(cuplan);
 }
 
 

@@ -50,15 +50,33 @@ void free_filter_properties(filter_properties *f, free_type how_to_free){
 }
 
 void free_plan(plan *p){
+	LOG("FREE PLAN");
+	LOG("p->f_hat");
 	free(p->f_hat);
+	LOG("p->x_data");
 	free(p->x_data);
+	LOG("p->f_data");
 	free(p->f_data);
+
+	LOG("free filter properties");
 	free_filter_properties(p->fprops, CUDA_FREE);
 
+	LOG("p->g_f_hat");
 	checkCudaErrors(cudaFree(p->g_f_hat));
+
+	LOG("p->g_f_filter");
 	checkCudaErrors(cudaFree(p->g_f_filter));
+
+	LOG("p->g_f_data");
 	checkCudaErrors(cudaFree(p->g_f_data));
+
+	LOG("p->g_x_data");
 	checkCudaErrors(cudaFree(p->g_x_data));
+
+	LOG("p")
+	free(p);
+
+	LOG("DONE!!")
 }
 
 __host__
