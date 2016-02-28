@@ -31,7 +31,7 @@ set_filter_properties(plan *p){
 	while (nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
 
 	LOG("CPU malloc for filter_properties pointer *f");
-	// malloc memory for filter_properties (on GPU)
+	// malloc (CPU) memory for filter_properties (on GPU)
 	filter_properties *f = (filter_properties *) malloc(sizeof(filter_properties));
 	f->E1 = (dTyp *)malloc(p->Ndata * sizeof(dTyp));
 	f->E2 = (dTyp *)malloc(p->Ndata * sizeof(dTyp));
@@ -39,6 +39,8 @@ set_filter_properties(plan *p){
 
 	f->filter_radius = FILTER_RADIUS;
 	p->filter_radius = f->filter_radius;
+
+
 
 	LOG("setting R and tau (CPU)");
 	// R                :  is the oversampling factor
