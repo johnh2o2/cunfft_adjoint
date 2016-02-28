@@ -44,7 +44,7 @@ cuda_nfft_adjoint(
 		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
 		checkCudaErrors(cudaGetLastError());
 	}
-	
+	/*
 
 	LOG("about to do fast_gridding");
 	// unequally spaced data -> equally spaced grid
@@ -85,11 +85,6 @@ cuda_nfft_adjoint(
 
 	checkCudaErrors(cudaGetLastError());
 
-	cufftComplex *gfhat_temp, gffilter_temp;
-	cudaMalloc((void **) &gfhat_temp, p->Ngrid * sizeof(cufftComplex));
-	cudaMalloc((void **) &gffilter_temp, p->Ngrid * sizeof(cufftComplex));
-
-
 	LOG("doing FFT of gridded data.");
 	// FFT(gridded data)
 	cufftExecC2C(  cuplan,
@@ -109,11 +104,10 @@ cuda_nfft_adjoint(
 	);
 
 	checkCudaErrors(cudaGetLastError());
+	*/
 
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while (nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
-
-	checkCudaErrors(cudaGetLastError());
 
 	for (i = 0; i < p->Ngrid; i++) {
 		fprintf(stderr, "p->g_f_filter: %d/%d\n", i + 1, p->Ngrid);

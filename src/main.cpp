@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     plan p;
 
     LOG("about to do init_plan.");
-    init_plan(&p, f, x, N, N * 5);
+    init_plan(&p, f, x, N, 32);
     print_plan(&p);
 
 
