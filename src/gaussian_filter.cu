@@ -38,30 +38,44 @@ set_filter_properties(plan *p){
 	// Ensures that we have enough threads!
 	while (nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
 
-	filter_properties *f;
-
 	p->filter_radius = FILTER_RADIUS;
+
+	dTyp *d_E1, *d_E2, *d_E3;
+	//[p->Ndata], d_E2[p->Ndata], d_E3[p->filter_radius];
+	filter_properties *f;
 
 	LOG("cudaMalloc f");
 	checkCudaErrors(cudaMalloc((void **) &f, sizeof(filter_properties)));
+
+	LOG("cudaMalloc d_E(1,2,3)");
+	checkCudaErrors(cudaMalloc((void **) &d_E1, p->Ndata * sizeof(dTyp)));
+	checkCudaErrors(cudaMalloc((void **) &d_E2, p->Ndata * sizeof(dTyp)));
+	checkCudaErrors(cudaMalloc((void **) &d_E3, p->filter_radius * sizeof(dTyp)));
+
+	checkCudaErrors(cudaDeviceSynchronize());
+
+	LOG("cudaMemcpy d_E. -> f->E.");
+	checkCudaErrors(cudaMemcpy((void **) &(f->E1), &d_E1, 
+		sizeof(filter_properties *), cudaMemcpyHostToDevice);
+
+	checkCudaErrors(cudaMemcpy((void **) &(f->E2), &d_E2, 
+		sizeof(filter_properties *), cudaMemcpyHostToDevice);
+
+	checkCudaErrors(cudaMemcpy((void **) &(f->E3), &d_E3, 
+		sizeof(filter_properties *), cudaMemcpyHostToDevice);
+
+	checkCudaErrors(cudaDeviceSynchronize());
 
 	// R                :  is the oversampling factor
 	dTyp R = ((dTyp) p->Ngrid) / p->Ndata;
 
 	// tau              :  is the characteristic length scale for the filter 
 	//                     (not to be confused with the filter_radius)
-	dTyp tau = (1.0 / (p->Ngrid * p->Ngrid)) * ( PI / (R* (R - 0.5)) ) * p->filter_radius;
+	dTyp tau = (1.0 / (p->Ngrid * p->Ngrid)) * (PI / (R* (R - 0.5))) * p->filter_radius;
 
 	LOG("Setting tau and filter radius");
 	// set tau and filter_radius (has to be done on GPU)
 	set_gpu_filter_variables<<< 1, 1 >>>(f, tau, FILTER_RADIUS);
-
-	LOG("cudaMalloc f->E1");
-	checkCudaErrors(cudaMalloc((void **) &(f->E1), p->Ndata * sizeof(dTyp) ));
-	LOG("cudaMalloc f->E2");
-	checkCudaErrors(cudaMalloc((void **) &(f->E2), p->Ndata * sizeof(dTyp) ));
-	LOG("cudaMalloc f->E3");
-	checkCudaErrors(cudaMalloc((void **) &(f->E3), p->filter_radius * sizeof(dTyp) ));
 
 	checkCudaErrors(cudaDeviceSynchronize());
 

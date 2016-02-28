@@ -4,7 +4,6 @@
 
 
 
-
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
 void copy_float_to_complex(dTyp *a, Complex *b, unsigned int N){
