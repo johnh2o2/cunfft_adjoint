@@ -107,7 +107,7 @@ init_plan(
 			p->Ngrid * sizeof(Complex))
 	);
 
-	cudaCheckErrors(cudaDeviceSynchronize());
+	checkCudaErrors(cudaDeviceSynchronize());
 
 	LOG("copying f_data to f_data_complex");
 	// "Cast" float array to Complex array

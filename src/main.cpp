@@ -11,7 +11,7 @@
 
 #define rmax 100000
 #define freq 10.0
-#define Random ((dTyp) (rand_r() % rmax))/rmax
+#define Random ((dTyp) (rand() % rmax))/rmax
 
 
 void print_plan(plan *p) {
