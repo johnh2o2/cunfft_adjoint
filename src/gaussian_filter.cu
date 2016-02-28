@@ -56,13 +56,13 @@ set_filter_properties(plan *p){
 
 	LOG("cudaMemcpy d_E. -> f->E.");
 	checkCudaErrors(cudaMemcpy((void **) &(f->E1), &d_E1, 
-		sizeof(filter_properties *), cudaMemcpyHostToDevice);
+		sizeof(filter_properties *), cudaMemcpyHostToDevice));
 
 	checkCudaErrors(cudaMemcpy((void **) &(f->E2), &d_E2, 
-		sizeof(filter_properties *), cudaMemcpyHostToDevice);
+		sizeof(filter_properties *), cudaMemcpyHostToDevice));
 
 	checkCudaErrors(cudaMemcpy((void **) &(f->E3), &d_E3, 
-		sizeof(filter_properties *), cudaMemcpyHostToDevice);
+		sizeof(filter_properties *), cudaMemcpyHostToDevice));
 
 	checkCudaErrors(cudaDeviceSynchronize());
 
@@ -81,7 +81,7 @@ set_filter_properties(plan *p){
 
 	LOG("calling setting_gpu_filter_properties");
 	// Precompute E1, E2, E3 on GPU
-	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>(f, p->x_data, p->Ngrid, p->Ndata);
+	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>(f, p->g_x_data, p->Ngrid, p->Ndata);
 	checkCudaErrors(cudaGetLastError());
 
 	checkCudaErrors(cudaDeviceSynchronize());
