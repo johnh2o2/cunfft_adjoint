@@ -75,7 +75,6 @@ cuda_nfft_adjoint(
 
 	LOG("planning cufftPlan");
 	// make plan
-
 	cufftHandle cuplan;
 	cufftPlan1d(
 		           &cuplan,
@@ -160,6 +159,7 @@ cuda_nfft_adjoint(
 	    )
 	);
 
+	checkCudaErrors(cudaGetLastError());
 	//LOG("cufftDestroy(cuplan)");
 	// Free plan memory.
 	//cufftDestroy(cuplan);
