@@ -14,7 +14,8 @@
     fprintf(stderr, "ERROR %-30s L[%-5d]: ", __FILE__, __LINE__);\
     fprintf(stderr, __VA_ARGS__);
 
-#define LOG(msg) fprintf(stderr, "%-30s L[%-5d]: %s\n", __FILE__, __LINE__, msg)
+//#define LOG(msg) fprintf(stderr, "%-30s L[%-5d]: %s\n", __FILE__, __LINE__, msg)
+#define LOG(msg) 
 
 #define checkCudaErrors(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
@@ -53,7 +54,7 @@ typedef struct {
 
     unsigned int Ndata, Ngrid, filter_radius;
 
-    filter_properties *fprops;
+    filter_properties *fprops_host, *fprops_device;
 } plan;
 
 void free_filter_properties(filter_properties *f, free_type how_to_free);

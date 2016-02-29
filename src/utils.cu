@@ -24,59 +24,43 @@ void scale_x(dTyp *x, unsigned int size){
 	}
 }
 
-__device__
-unsigned int
-get_index(){ return blockIdx.x * BLOCK_SIZE + threadIdx.x; }
-
-
-void free_filter_properties(filter_properties *f, free_type how_to_free){
-	switch(how_to_free){
-		case CUDA_FREE:
-			checkCudaErrors(cudaFree(f->E1));
-			checkCudaErrors(cudaFree(f->E2));
-			checkCudaErrors(cudaFree(f->E3));
-			checkCudaErrors(cudaFree(f));
-			break;
-		case CPU_FREE:
-			free(f->E1);
-			free(f->E2);
-			free(f->E3);
-			free(f);
-			break;
-		default:
-			eprint("cannot understand free_type");
-			break;
-	}
-}
 
 void free_plan(plan *p){
-	LOG("FREE PLAN");
-	LOG("p->f_hat");
+	LOG("===== free_plan =====");
+	LOG("free     p->f_hat");
 	free(p->f_hat);
-	LOG("p->x_data");
+	LOG("free     p->x_data");
 	free(p->x_data);
-	LOG("p->f_data");
+	LOG("free     p->f_data");
 	free(p->f_data);
 
-	LOG("free filter properties");
-	free_filter_properties(p->fprops, CUDA_FREE);
+	LOG("cudaFree p->fprops_host->E(1,2,3)");
+	checkCudaErrors(cudaFree(p->fprops_host->E1));
+	checkCudaErrors(cudaFree(p->fprops_host->E2));
+	checkCudaErrors(cudaFree(p->fprops_host->E3));
 
-	LOG("p->g_f_hat");
+	LOG("free     p->fprops_host");
+	free(p->fprops_host);
+
+	LOG("cudaFree p->fprops_device");
+	checkCudaErrors(cudaFree(p->fprops_device));
+
+	LOG("cudaFree p->g_f_hat");
 	checkCudaErrors(cudaFree(p->g_f_hat));
 
-	LOG("p->g_f_filter");
+	LOG("cudaFree p->g_f_filter");
 	checkCudaErrors(cudaFree(p->g_f_filter));
 
-	LOG("p->g_f_data");
+	LOG("cudaFree p->g_f_data");
 	checkCudaErrors(cudaFree(p->g_f_data));
 
-	LOG("p->g_x_data");
+	LOG("cudaFree p->g_x_data");
 	checkCudaErrors(cudaFree(p->g_x_data));
 
-	LOG("p");
+	LOG("free     p");
 	free(p);
 
-	LOG("DONE!!");
+	LOG("=====================");
 }
 
 __host__
@@ -90,12 +74,11 @@ init_plan(
 
 ){
 	LOG("in init_plan -- mallocing for CPU");
-	// Set 
 	p->Ndata = Ndata;
 	p->Ngrid = Ngrid;
 	p->x_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
 	p->f_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
-	p->f_hat  = (Complex *) malloc( Ngrid * sizeof(dTyp));
+	p->f_hat  = (Complex *) malloc( Ngrid * sizeof(Complex));
 
 	LOG("memcpy x and f to plan");
 	memcpy(p->x_data, x, Ndata * sizeof(dTyp));
@@ -104,23 +87,23 @@ init_plan(
 	// Allocate GPU memory
 	LOG("cudaMalloc -- p->g_f_data");
 	checkCudaErrors(
-		cudaMalloc((void **) &p->g_f_data, 
+		cudaMalloc((void **) &(p->g_f_data), 
 			p->Ndata * sizeof(Complex))
 	);
 	LOG("cudaMalloc -- p->g_x_data");
 	checkCudaErrors(
-		cudaMalloc((void **) &p->g_x_data, 
+		cudaMalloc((void **) &(p->g_x_data), 
 			p->Ndata * sizeof(dTyp))
 	);
 	LOG("cudaMalloc -- p->g_f_hat");
 	checkCudaErrors(
-		cudaMalloc((void **) &p->g_f_hat, 
+		cudaMalloc((void **) &(p->g_f_hat), 
 			p->Ngrid * sizeof(Complex))
 	);
 
 	LOG("cudaMalloc -- p->g_f_filter");
 	checkCudaErrors(
-		cudaMalloc((void **) &p->g_f_filter, 
+		cudaMalloc((void **) &(p->g_f_filter), 
 			p->Ngrid * sizeof(Complex))
 	);
 

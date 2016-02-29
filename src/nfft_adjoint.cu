@@ -23,7 +23,8 @@
 
 
 __global__ void access(const Complex *a, unsigned int index) {
-	Complex junk = a[index];
+	unsigned int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+	if (i == 0) Complex junk = a[index];
 }
 // computes the adjoint NFFT and stores this in plan->f_hat
 __host__
@@ -36,16 +37,8 @@ cuda_nfft_adjoint(
 	unsigned int nblocks;
 	nblocks = p->Ndata / BLOCK_SIZE;
 	while (nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
-
-
-	int i;
-	for (i = 0; i < p->Ngrid; i++) {
-		fprintf(stderr, "p->g_f_filter: %d/%d\n", i + 1, p->Ngrid);
-		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
-		checkCudaErrors(cudaGetLastError());
-	}
-	/*
-
+	
+	
 	LOG("about to do fast_gridding");
 	// unequally spaced data -> equally spaced grid
 	fast_gridding<<< nblocks, BLOCK_SIZE >>>(
@@ -54,8 +47,9 @@ cuda_nfft_adjoint(
 		           p->g_x_data,
 		           p->Ngrid,
 		           p->Ndata,
-		           p->fprops
+		           p->fprops_device
 	);
+
 
 	checkCudaErrors(cudaGetLastError());
 
@@ -67,24 +61,24 @@ cuda_nfft_adjoint(
 		           p->g_x_data,
 		           p->Ngrid,
 		           p->Ndata,
-		           p->fprops
+		           p->fprops_device
 	);
 
 	checkCudaErrors(cudaGetLastError());
-
+	
 
 	LOG("planning cufftPlan");
 	// make plan
 	cufftHandle cuplan;
 	cufftPlan1d(
 		           &cuplan,
-		           p->Ngrid,
+		           p->Ngrid * sizeof(Complex),
 		           CUFFT_C2C,
 		           1
 	);
 
 	checkCudaErrors(cudaGetLastError());
-
+	
 	LOG("doing FFT of gridded data.");
 	// FFT(gridded data)
 	cufftExecC2C(  cuplan,
@@ -94,7 +88,7 @@ cuda_nfft_adjoint(
 	);
 
 	checkCudaErrors(cudaGetLastError());
-
+	
 	LOG("doing FFT of filter.");
 	// FFT(filter)
 	cufftExecC2C(  cuplan,
@@ -104,22 +98,10 @@ cuda_nfft_adjoint(
 	);
 
 	checkCudaErrors(cudaGetLastError());
-	*/
-
+	
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while (nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
 
-	for (i = 0; i < p->Ngrid; i++) {
-		fprintf(stderr, "p->g_f_filter: %d/%d\n", i + 1, p->Ngrid);
-		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_filter, p->Ngrid);
-		checkCudaErrors(cudaGetLastError());
-	}
-
-	for (i = 0; i < p->Ngrid; i++) {
-		fprintf(stderr, "p->g_f_hat: %d/%d\n", i + 1, p->Ngrid);
-		access <<< nblocks, BLOCK_SIZE >>> (p->g_f_hat, p->Ngrid);
-		checkCudaErrors(cudaGetLastError());
-	}
 
 	// FFT(gridded data) / FFT(filter)
 	LOG("Dividing by spectral window.");
@@ -136,26 +118,31 @@ cuda_nfft_adjoint(
 	normalize <<< nblocks, BLOCK_SIZE >>>(
 	    p->g_f_hat,
 	    p->Ngrid,
-	    p->fprops
+	    p->fprops_device
 	);
-
+	
 	checkCudaErrors(cudaGetLastError());
-
+	
 	LOG("Transferring data back to device");
+	
 	// Transfer back to device!
 	checkCudaErrors(
 	    cudaMemcpy(
 	        p->f_hat,
 	        p->g_f_hat,
+	        //1,
 	        p->Ngrid * sizeof(Complex),
 	        cudaMemcpyDeviceToHost
 	    )
 	);
-
 	checkCudaErrors(cudaGetLastError());
+	
+
+	
 	LOG("cufftDestroy(cuplan)");
 	// Free plan memory.
 	cufftDestroy(cuplan);
+	
 }
 
 

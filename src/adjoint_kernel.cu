@@ -40,7 +40,7 @@ fast_gridding(
 	filter_properties 	*fprops
 ){
 	
-	unsigned int i = get_index();
+	unsigned int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	
 	if (i < Ndata) {
 		unsigned int j = (int) ((x_data[i] / (2 * PI)) * Ndata);
@@ -56,6 +56,6 @@ divide_by_spectral_window(
 	const Complex 		*filt,
 	const unsigned int 	N
 ){
-	unsigned int i = get_index();
+	unsigned int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if (i < N) sig[i].x /= filt[i].x;
 }

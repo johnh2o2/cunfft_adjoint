@@ -11,7 +11,7 @@ void copy_float_to_complex(dTyp *a, Complex *b, unsigned int N);
 void scale_x(dTyp *x, unsigned int size);
 
 // GPU index from ID
-__device__ unsigned int get_index();
+//__device__ unsigned int get_index();
 
 __host__
 void
