@@ -16,14 +16,11 @@
 #define Random ((dTyp) (rand() % rmax))/rmax
 
 
-void print_plan(plan *p) {
-    fprintf(stderr, "PLAN: \n\tp->Ngrid = %d\n\tp->Ndata = %d\n",
-            p->Ngrid, p->Ndata);
-    fprintf(stderr, "\tp->f_hat[0] = %.3e + %.3ei\n",
-            p->f_hat[0].x, p->f_hat[0].y);
+dTyp complexMod2(Complex a){
+    return a.x * a.x + a.y * a.y;
 }
 
-void set_freqs( dTyp *f, dTyp L, unsigned int N){
+void set_freqs( dTyp *f, dTyp L, int N){
     for(int i = 0; i < N; i++)
         f[i] = i / L;
 }
@@ -34,7 +31,7 @@ dTyp mag( Complex value){
 }
 
 int main(int argc, char *argv[]) {
-    unsigned int N = 20;
+    int N = 1024;
     dTyp f[N], x[N];
 
     //cudaSetDevice(0);
@@ -45,32 +42,44 @@ int main(int argc, char *argv[]) {
 
 
     x[0] = 0;
+    dTyp phi = PI/2;
     for (i = 1; i < N; i++) x[i] = Random + x[i - 1];
     for (i = 1; i < N; i++) x[i] = (x[i] / x[N - 1]) * 2 * PI;
 
-    for (i = 0; i < N; i++) f[i] = cos(freq * x[i]);
+    for (i = 0; i < N; i++) f[i] = cos(freq * x[i] - phi);
+
+
 
     LOG("setting x");
     dTyp range = x[N - 1] - x[0];
     scale_x(x, N);
+
+    FILE *out = fopen("original.dat", "w");
+    for (i=0; i < N; i++)
+        fprintf(out, "%e %e\n", x[i] * range, f[i]);
+    fclose(out);
 
     LOG("done.");
 
     plan *p = (plan *) malloc(sizeof(plan));
 
     LOG("about to do init_plan.");
-    init_plan(p, f, x, N, 32);
+    init_plan(p, f, x, N, 4*N);
     
     //print_plan(p);
+    //return EXIT_SUCCESS;
 
     LOG("about to do nfft adjoint.");
     cuda_nfft_adjoint(p);
+    //print_plan(p);
 
     Complex *f_hat = (Complex *)malloc(p->Ngrid * sizeof(Complex));
     memcpy(f_hat, p->f_hat, p->Ngrid * sizeof(Complex));
 
+    FILE *out_result = fopen("FFT.dat", "w");
     for (i = 0; i < p->Ngrid; i++ ) 
-        printf("%-15.5e %-15.5e\n", i / range, p->f_hat[i].x);
+        fprintf(out_result,"%-5d %-15.5e %-15.5e\n",i , p->f_hat[i].x, p->f_hat[i].y);
+    fclose(out_result);
 
     LOG("about to free plan.");
     free_plan(p);

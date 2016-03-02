@@ -21,8 +21,8 @@ set_filter_properties(
 __device__ 
 dTyp
 filter( 
-	const unsigned int 	j_data, 
-	const unsigned int 	i_grid, 
+	const int 	j_data, 
+	const int 	i_grid, 
 	const int	     	m, 
 	filter_properties 	*f
 );
@@ -31,7 +31,7 @@ __global__
 void
 normalize(
 	Complex 		    *f_hat, 
-	unsigned int 		Ngrid,
+	int 		Ngrid,
 	filter_properties 	*f
 );
 

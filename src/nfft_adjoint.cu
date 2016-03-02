@@ -21,9 +21,10 @@
 //#include <helper_cuda.h>
 
 
+FILE *out;
 
-__global__ void access(const Complex *a, unsigned int index) {
-	unsigned int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+__global__ void access(const Complex *a, int index) {
+	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if (i == 0) Complex junk = a[index];
 }
 // computes the adjoint NFFT and stores this in plan->f_hat
@@ -34,7 +35,7 @@ cuda_nfft_adjoint(
 
 ) {
 
-	unsigned int nblocks;
+	int nblocks;
 	nblocks = p->Ndata / BLOCK_SIZE;
 	while (nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
 	
@@ -50,8 +51,13 @@ cuda_nfft_adjoint(
 		           p->fprops_device
 	);
 
+	
+	checkCudaErrors(cudaDeviceSynchronize());
 
-	checkCudaErrors(cudaGetLastError());
+	out = fopen("gridded_data.dat", "w");
+	printComplex_d(p->g_f_hat, p->Ngrid, out);
+	fclose(out);
+
 
 	LOG("about to do fast_gridding (filter)");
 	// (same as above, but for the filter)
@@ -64,7 +70,13 @@ cuda_nfft_adjoint(
 		           p->fprops_device
 	);
 
-	checkCudaErrors(cudaGetLastError());
+	
+	checkCudaErrors(cudaDeviceSynchronize());
+
+	out = fopen("gridded_filter.dat", "w");
+	printComplex_d(p->g_f_filter, p->Ngrid, out);
+	fclose(out);
+	
 	
 
 	LOG("planning cufftPlan");
@@ -77,32 +89,44 @@ cuda_nfft_adjoint(
 		           1
 	);
 
-	checkCudaErrors(cudaGetLastError());
+	checkCudaErrors(cudaDeviceSynchronize());
+
+
 	
 	LOG("doing FFT of gridded data.");
 	// FFT(gridded data)
 	cufftExecC2C(  cuplan,
-		          (cufftComplex *)(p->g_f_hat),
-				  (cufftComplex *)(p->g_f_hat),
+		          (fftComplex *)(p->g_f_hat),
+				  (fftComplex *)(p->g_f_hat),
 				   CUFFT_FORWARD
 	);
-
-	checkCudaErrors(cudaGetLastError());
 	
+	checkCudaErrors(cudaDeviceSynchronize());
+
+	out = fopen("FFT_raw_f_hat.dat", "w");
+	printComplex_d(p->g_f_hat, p->Ngrid, out);
+	fclose(out);
+
+	/*
 	LOG("doing FFT of filter.");
 	// FFT(filter)
 	cufftExecC2C(  cuplan,
-				  (cufftComplex *)(p->g_f_filter),
-				  (cufftComplex *)(p->g_f_filter),
+				  (fftComplex *)(p->g_f_filter),
+				  (fftComplex *)(p->g_f_filter),
 				   CUFFT_FORWARD
 	);
 
-	checkCudaErrors(cudaGetLastError());
+	checkCudaErrors(cudaDeviceSynchronize());
+
+	out = fopen("FFT_raw_f_filter.dat", "w");
+	printComplex_d(p->g_f_filter, p->Ngrid, out);
+	fclose(out);
+	
 	
 	nblocks = p->Ngrid / BLOCK_SIZE;
 	while (nblocks * BLOCK_SIZE < p->Ngrid) nblocks++;
 
-
+	
 	// FFT(gridded data) / FFT(filter)
 	LOG("Dividing by spectral window.");
 	divide_by_spectral_window <<< nblocks, BLOCK_SIZE >>> (
@@ -111,7 +135,12 @@ cuda_nfft_adjoint(
 	    p->Ngrid
 	);
 
-	checkCudaErrors(cudaGetLastError());
+	checkCudaErrors(cudaDeviceSynchronize());
+
+	out = fopen("FFT_after_dividing_by_filter.dat", "w");
+	printComplex_d(p->g_f_hat, p->Ngrid, out);
+	fclose(out);
+	*/
 
 	LOG("Normalizing");
 	// normalize (eq. 11 in Greengard & Lee 2004)
@@ -121,7 +150,8 @@ cuda_nfft_adjoint(
 	    p->fprops_device
 	);
 	
-	checkCudaErrors(cudaGetLastError());
+	checkCudaErrors(cudaDeviceSynchronize());
+	
 	
 	LOG("Transferring data back to device");
 	
@@ -130,12 +160,11 @@ cuda_nfft_adjoint(
 	    cudaMemcpy(
 	        p->f_hat,
 	        p->g_f_hat,
-	        //1,
 	        p->Ngrid * sizeof(Complex),
 	        cudaMemcpyDeviceToHost
 	    )
 	);
-	checkCudaErrors(cudaGetLastError());
+	checkCudaErrors(cudaDeviceSynchronize());
 	
 
 	
