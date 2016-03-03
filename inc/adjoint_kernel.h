@@ -19,7 +19,7 @@ void
 fast_gridding(
 	Complex 		    *f_data, 
 	Complex 		    *f_grid, 
-	const float 		*x_data, 
+	const dTyp 		*x_data, 
 	const int 	Ngrid, 
 	const int 	Ndata, 
 	filter_properties 	*fprops

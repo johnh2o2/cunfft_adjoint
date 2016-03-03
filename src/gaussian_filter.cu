@@ -9,107 +9,149 @@
 #include "utils.h"
 #include <stdlib.h>
 #include <stdio.h>
-//#include <helper_cuda.h>
-//#include <helper_functions.h>
 
+
+#ifdef DOUBLE_PRECISION
+#define FILTER_RADIUS 12
+#else
 #define FILTER_RADIUS 6
+#endif
 
-char message[100];
 
 __global__
 void
 set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid, 
 				const int Ndata );
 
-__global__ void print_filter_props_d(filter_properties *f, int Ndata){
-	printf("DEVICE FILTER_PROPERTIES\n\ttau = %.3e\n\tfilter_radius = %d\n", f->tau, f->filter_radius);
-	for(int i = 0; i < Ndata; i++)
-		printf("\tf->E1[%-3d] = %-10.3e\n", i, f->E1[i]);
-	printf("\t---------------------\n");
-	for(int i = 0; i < Ndata; i++)
-		printf("\tf->E2[%-3d] = %-10.3e\n", i, f->E2[i]); 
-	printf("\t---------------------\n");
-	for(int i = 0; i < f->filter_radius; i++)
-		printf("\tf->E3[%-3d] = %-10.3e\n", i, f->E3[i]); 
-	printf("\t---------------------\n");
-}
-
-
-// pre-computes values for the filter
+///////////////////////////////////////////////////////////////////////////////
+// SET FILTER PROPERTIES + PRECOMPUTATIONS
 __host__
 void 
 set_filter_properties(plan *p){
+
+	// Note: need two copies of the filter properties
+	//       so that we can free the (E1, E2, E3) pointers
+	//       because you can't do ([GPU]pointer)->(something)
+	//       
+	// [CPU]p { [CPU]fprops_host   { [GPU]E1, E2, E3, [CPU]tau, filter_radius },
+	//          [GPU]fprops_device { [GPU] ^,  ^,  ^, tau, filter_radius }  
+	//       }
+
+
 	LOG("in set_filter_properties");
 	
+	dTyp tau, R;
 
+	// set plan filter radius
 	p->filter_radius = FILTER_RADIUS;
 
-	// nblocks x BLOCK_SIZE threads
+	// nthreads = nblocks x BLOCK_SIZE
 	int nblocks = (p->Ndata + p->filter_radius) / BLOCK_SIZE;
 
-	// Ensures that we have enough threads!
+	// make sure nthreads >= data size + filter radius
 	while (nblocks * BLOCK_SIZE < p->Ndata + p->filter_radius) nblocks++;
 
+	// allocate host filter_properties
 	LOG("malloc p->fprops_host");
 	p->fprops_host = (filter_properties *)malloc(sizeof(filter_properties));
 
 	// R                :  is the oversampling factor
-	dTyp R = ((dTyp) p->Ngrid) / p->Ndata;
+	R = ((dTyp) p->Ngrid) / p->Ndata;
 
 	// tau              :  is the characteristic length scale for the filter 
 	//                     (not to be confused with the filter_radius)
-	//dTyp tau = (1.0 / (p->Ndata * p->Ndata)) * (PI / (R* (R - 0.5))) * p->filter_radius;
-	dTyp tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
+
+	// below was the expression I found in Greengard & Lee 2003; I think 
+	// they must have had a typo, since this tau is much too small.
+	// tau = (1.0 / (p->Ndata * p->Ndata)) 
+	// 			* (PI / (R* (R - 0.5))) * p->filter_radius;
+	tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
 
 
-	LOG("setting fprops_host->(filter_radius, tau)");
+	LOG("setting p->fprops_host->(filter_radius, tau)");
+	// set filter radius and tau 
 	p->fprops_host->tau = tau;
 	p->fprops_host->filter_radius = p->filter_radius;
 
+	
 	LOG("cuda malloc p->fprops_device");
-	checkCudaErrors(cudaMalloc((void **) &(p->fprops_device), sizeof(filter_properties)));
+	// allocate device filter properties
+	checkCudaErrors(
+		cudaMalloc(
+			(void **) &(p->fprops_device), 
+			sizeof(filter_properties)
+			)
+		);
 
+	
 	LOG("cudaMalloc p->fprops_host->E(1,2,3)");
-	checkCudaErrors(cudaMalloc((void **) &(p->fprops_host->E1), p->Ndata * sizeof(dTyp)));
-	checkCudaErrors(cudaMalloc((void **) &(p->fprops_host->E2), p->Ndata * sizeof(dTyp)));
-	checkCudaErrors(cudaMalloc((void **) &(p->fprops_host->E3), p->filter_radius * sizeof(dTyp)));
-
-	checkCudaErrors(cudaDeviceSynchronize());
-
-	sprintf(message, "\tR = %.3e\n\ttau = %.3e\n", R, tau);
+	// allocate GPU memory for E1, E2, E3
+	checkCudaErrors(
+		cudaMalloc(
+			(void **) &(p->fprops_host->E1), 
+			p->Ndata * sizeof(dTyp)
+			)
+		);
+	checkCudaErrors(
+		cudaMalloc(
+			(void **) &(p->fprops_host->E2), 
+			p->Ndata * sizeof(dTyp)
+			)
+		);
+	checkCudaErrors(
+		cudaMalloc(
+			(void **) &(p->fprops_host->E3), 
+			p->filter_radius * sizeof(dTyp)
+			)
+		);
 
 	LOG("cudaMemcpy p->fprops_host ==> p->fprops_device");
-	checkCudaErrors(cudaMemcpy(p->fprops_device, p->fprops_host, 
-		sizeof(filter_properties), cudaMemcpyHostToDevice ));
-
-	checkCudaErrors(cudaDeviceSynchronize());
+	// Copy filter properties to device
+	checkCudaErrors(
+		cudaMemcpy(
+			p->fprops_device, 
+			p->fprops_host, 
+			sizeof(filter_properties), 
+			cudaMemcpyHostToDevice 
+			)
+		);
 
 	LOG("calling setting_gpu_filter_properties");
 	// Precompute E1, E2, E3 on GPU
-	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>(p->fprops_device, p->g_x_data, p->Ngrid, p->Ndata);
-	checkCudaErrors(cudaGetLastError());
-	checkCudaErrors(cudaDeviceSynchronize());
+	if (!EQUALLY_SPACED) {
+		
+		set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>
+			(p->fprops_device, p->g_x_data, p->Ngrid, p->Ndata);
+	
+		checkCudaErrors(cudaGetLastError());
+		checkCudaErrors(cudaDeviceSynchronize());
+	}
 
 }
 
 
 
-/////////////////////////////////////////////
-//  Uses GPU to precompute relevant values //
-////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Precomputation for filter (done on GPU)
 __global__
 void
 set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid, 
 				const int Ndata ){
+	// index
 	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if ( i < Ndata){
+		
+		// m = index of closest grid point to this data point
 		int m = (i * Ngrid) / Ndata;
-		dTyp eps = x[i] - 2 * PI * m / Ngrid;
+		
+		// eps is the [0, 2pi] coordinate of the nearest gridpoint
+		dTyp eps = x[i] - (2 * PI * m) / Ngrid;
 
 		f->E1[i] = exp(- eps * eps / (4 * f->tau));
 		f->E2[i] = exp( eps * PI / (Ngrid * f->tau)); 
 	}
 	else if ( i < Ndata + f->filter_radius){
+		// E3 has just FILTER_RADIUS values
 		int j = i - Ndata;
 		dTyp a = PI * PI * j * j / (Ngrid * Ngrid);
 		f->E3[j] = exp( -a / f->tau);
@@ -117,6 +159,8 @@ set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid,
 	
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Computes filter value for a given data index, grid index, and offset (m)
 __device__
 dTyp
 filter( const int j_data, const int i_grid, 
@@ -128,15 +172,16 @@ filter( const int j_data, const int i_grid,
 	return f->E1[j_data] * pow(f->E2[j_data], m) * f->E3[mp];
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Deconvolves filter from final result (analytically)
 __global__
 void
 normalize(Complex *f_hat, int Ngrid, filter_properties *f){
 
 	int k = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if ( k < Ngrid ){
-		//k = i - Ngrid/2
-		dTyp fac = sqrt(PI/f->tau) * exp(k * k * f->tau);
-		f_hat[k].x *= fac/Ngrid;
-		f_hat[k].y *= fac/Ngrid;
+		dTyp fac = sqrt(f->tau / PI) * exp( -k * k * f->tau);
+		f_hat[k].x *= fac;
+		f_hat[k].y *= fac;
 	}
 }

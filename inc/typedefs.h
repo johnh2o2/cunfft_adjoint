@@ -7,9 +7,20 @@
 #include <cuda_runtime.h>
 #include <stdlib.h>
 
-#define DOUBLE_PRECISION
+// #define DOUBLE_PRECISION
 
-#define PI 3.1415926535897932384626433832795028841971
+#ifdef DOUBLE_PRECISION
+#define dTyp double
+#define Complex doubleComplex
+#define fftComplex cufftDoubleComplex
+#else
+#define dTyp float
+#define Complex singleComplex
+#define fftComplex cufftComplex
+#endif
+
+
+#define PI 3.14159265358979323846
 
 #define eprint(...) \
     fprintf(stderr, "[%-10s] %-30s L[%-5d]: ", "ERROR", __FILE__, __LINE__);\
@@ -35,17 +46,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
 typedef float2 singleComplex;
 typedef double2 doubleComplex;
 
-#ifdef DOUBLE_PRECISION
-    #define dTyp double
-    #define Complex doubleComplex
-    #define fftComplex cufftDoubleComplex
-
-#else
-    #define dTyp float
-    #define Complex singleComplex
-    #define fftComplex cufftComplex
-#endif
-
+extern int EQUALLY_SPACED;
 
 typedef enum {
     CPU_FREE,
@@ -72,6 +73,9 @@ typedef struct {
     int Ndata, Ngrid, filter_radius;
 
     filter_properties *fprops_host, *fprops_device;
+
+    char out_root[100];
+
 } plan;
 
 void free_filter_properties(filter_properties *f, free_type how_to_free);

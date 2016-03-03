@@ -2,6 +2,7 @@
 #include "filter.h"
 #include <stdlib.h>
 
+#ifdef DOUBLE_PRECISION
 
 __device__ double atomicAdd(double* address, double val)
 {
@@ -17,10 +18,11 @@ old = atomicCAS(address_as_ull, assumed,
     return __longlong_as_double(old);
 }
 
+#endif
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
-void copy_float_to_complex(dTyp *a, Complex *b, int N){
+void copy_real_to_complex(dTyp *a, Complex *b, int N){
 	for (int i = 0; i < N; i++){
 		b[i].x = a[i];
 		b[i].y = 0;
@@ -30,7 +32,7 @@ void copy_float_to_complex(dTyp *a, Complex *b, int N){
 void scale_x(dTyp *x, int size){
 	// ensures that x \in [0, 2pi)
 
-	float range = x[size-1] - x[0];
+	dTyp range = x[size-1] - x[0];
 	for(int i = 0; i < size; i++){
 		x[i]-=x[0];
 		x[i]/=range;
@@ -144,7 +146,18 @@ void free_plan(plan *p){
 }
 
 
-
+__global__ void print_filter_props_d(filter_properties *f, int Ndata){
+	printf("DEVICE FILTER_PROPERTIES\n\ttau = %.3e\n\tfilter_radius = %d\n", f->tau, f->filter_radius);
+	for(int i = 0; i < Ndata; i++)
+		printf("\tf->E1[%-3d] = %-10.3e\n", i, f->E1[i]);
+	printf("\t---------------------\n");
+	for(int i = 0; i < Ndata; i++)
+		printf("\tf->E2[%-3d] = %-10.3e\n", i, f->E2[i]); 
+	printf("\t---------------------\n");
+	for(int i = 0; i < f->filter_radius; i++)
+		printf("\tf->E3[%-3d] = %-10.3e\n", i, f->E3[i]); 
+	printf("\t---------------------\n");
+}
 __host__
 void 
 init_plan(
@@ -197,7 +210,7 @@ init_plan(
 	LOG("copying f_data to f_data_complex");
 	// "Cast" float array to Complex array
 	Complex f_data_complex[p->Ndata];
-	copy_float_to_complex(p->f_data, f_data_complex, p->Ndata);
+	copy_real_to_complex(p->f_data, f_data_complex, p->Ndata);
 
 	LOG("cudaMemcpy f_data_complex ==> p->g_f_data");
 	// Copy f_j -> GPU

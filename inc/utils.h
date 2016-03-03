@@ -46,6 +46,11 @@ __host__
 void
 printComplex(Complex *a, int N);
 
+__global__ void print_filter_props_d(filter_properties *f, int Ndata);
+
+#ifdef DOUBLE_PRECISION
 __device__ double atomicAdd(double* address, double val);
+#endif
+
 
 #endif
