@@ -44,20 +44,21 @@ LINK := $(LIBS) $(LIB_DIRS)
 NVCCFLAGS += $(ALLFLAGS) $(INCLUDE_DIRS)
 #CXXFLAGS += $(ALLFLAGS) $(INCLUDE_DIRS)
 CXXFLAGS := $(NVCCFLAGS)
+EXTRAFLAGS := 
 
 all : $(EXECUTABLE)
 
 $(EXECUTABLE): $(CPP_OBJ_FILES) $(CU_OBJ_FILES)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LINK)
+	$(CXX) $(EXTRAFLAGS) $(CXXFLAGS) -o $@ $^ $(LINK)
 
 $(CU_OBJ_FILES) : 
-	$(NVCC) $(NVCCFLAGS) -rdc=true -c src/$(*F).cu -o obj/$(*F).o
+	$(NVCC) $(EXTRAFLAGS) $(NVCCFLAGS) -rdc=true -c src/$(*F).cu -o obj/$(*F).o
 
 $(CPP_OBJ_FILES) : 
-	$(CXX) $(CXXFLAGS) -c src/$(*F).cpp -o obj/$(*F).o
+	$(CXX) $(EXTRAFLAGS) $(CXXFLAGS) -c src/$(*F).cpp -o obj/$(*F).o
 
 .PHONY : clean
 clean : 
-	rm -f obj/* $(EXECUTABLE)
+	rm -f *dat obj/* $(EXECUTABLE)
 
 print-%  : ; @echo $* = $($*)

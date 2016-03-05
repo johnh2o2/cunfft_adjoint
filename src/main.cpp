@@ -1,7 +1,25 @@
-/* main.cpp
-* Copyright 2016 John Hoffman
-*
-*/
+/*   main.cpp
+ *   ========   
+ *   
+ *   UNIT TESTING for the cuNFFT_adjoint operations
+ * 
+ *   (c) John Hoffman 2016
+ * 
+ *   This file is part of cuNFFT_adjoint
+ *
+ *   cuNFFT_adjoint is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   cuNFFT_adjoint is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,8 +29,7 @@
 #include "nfft_adjoint.h"
 #include "typedefs.h"
 
-#define rmax 100000
-#define freq 10.0
+#define rmax 1000000
 #define Random ((dTyp) (rand() % rmax))/rmax
 
 int EQUALLY_SPACED;
@@ -32,7 +49,21 @@ dTyp mag( Complex value){
 }
 
 int main(int argc, char *argv[]) {
-    int N = 1024;
+    if(argc != 4) {
+    	fprintf(stderr, "usage: %s N R f\n\n", argv[0]);
+        fprintf(stderr, "N : number of data points\n");
+        fprintf(stderr, "R : Oversampling factor\n");
+        fprintf(stderr, "f : angular frequency of signal\n");
+        exit(EXIT_FAILURE);
+    }
+
+
+    int N = atoi(argv[1]);
+    int R = atoi(argv[2]);
+    dTyp freq = atof(argv[3]);
+
+
+
     dTyp f[N], x[N], x_aligned[N], f_aligned[N];
     EQUALLY_SPACED = 0;
     //cudaSetDevice(0);
@@ -49,7 +80,7 @@ int main(int argc, char *argv[]) {
 
     for (i = 1; i < N; i++) x[i] = Random + x[i - 1];
     for (i = 1; i < N; i++) x[i] = (x[i] / x[N - 1]) * 2 * PI;
-    for (i = 0; i < N; i++) f[i] = cos(freq * x[i] - phi);
+    for (i = 0; i < N; i++) f[i] = cos(freq * x[i] - phi) + Random;
 
     range = x[N - 1] - x[0];
     dx = range/(N - 1);
@@ -78,7 +109,7 @@ int main(int argc, char *argv[]) {
     p = (plan *) malloc(sizeof(plan));
 
     LOG("about to do init_plan.");
-    init_plan(p, f, x, N, 4*N);
+    init_plan(p, f, x, N, R*N);
     sprintf(p->out_root, "unequally_spaced");
 
     LOG("about to do nfft adjoint.");
@@ -99,8 +130,8 @@ int main(int argc, char *argv[]) {
     p = (plan *) malloc(sizeof(plan));
 
     LOG("about to do init_plan.");
-    EQUALLY_SPACED = 1;
-    init_plan(p, f_aligned, x_aligned, N, N);
+    //EQUALLY_SPACED = 1;
+    init_plan(p, f_aligned, x_aligned, N, R *N);
     sprintf(p->out_root, "equally_spaced");
 
     LOG("about to do nfft adjoint.");

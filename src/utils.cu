@@ -1,3 +1,26 @@
+/*   utils.cu
+ *   ========  
+ *   
+ *   
+ * 
+ *   (c) John Hoffman 2016
+ * 
+ *   This file is part of cuNFFT_adjoint
+ *
+ *   cuNFFT_adjoint is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   cuNFFT_adjoint is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "utils.h"
 #include "filter.h"
 #include <stdlib.h>
@@ -19,6 +42,26 @@ old = atomicCAS(address_as_ull, assumed,
 }
 
 #endif
+
+__device__
+Complex
+scalarComplexMult( Complex cval, dTyp rval) {
+	Complex val;
+	val.x = cval.x * rval;
+	val.y = cval.y * rval;
+}
+
+__device__
+void 
+constantComplexMult( Complex *cval, dTyp rval, int N) {
+	for (int i = 0; i < N; i++) {
+		cval[i].x *= rval;
+		cval[i].y *= rval;
+	} 
+}
+
+
+
 
 // Copies over a float array to Complex array
 // TODO: Find a more efficient/sensible way to do this.
@@ -204,6 +247,8 @@ init_plan(
 
 	checkCudaErrors(cudaMemset(p->g_f_hat, 0, p->Ngrid * sizeof(Complex)));
 	checkCudaErrors(cudaMemset(p->g_f_filter, 0, p->Ngrid * sizeof(Complex)));
+	checkCudaErrors(cudaMemset(p->g_f_data, 0, p->Ndata * sizeof(Complex)));
+	checkCudaErrors(cudaMemset(p->g_x_data, 0, p->Ndata * sizeof(dTyp)));
 
 	checkCudaErrors(cudaDeviceSynchronize());
 

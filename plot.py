@@ -1,7 +1,12 @@
 import numpy as np
+import matplotlib
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import os, sys
 
+os.system("rm -f *dat && ./cunfft_adjoint %s %s %s"%(sys.argv[1], sys.argv[2], sys.argv[3]))
 
+freq = float(sys.argv[3])
 dt_complex = np.dtype([ ('index', int), ('re', float), ('im', float) ])
 dt_real = np.dtype([ ('x', float), ('y', float) ])
 
@@ -47,6 +52,13 @@ fig2, ax2 = plt.subplots()
 
 mod = lambda a: np.sqrt(np.power(a['re'], 2) + np.power(a['im'], 2))
 
+kmax = np.argmax(mod(fft_raw_data))
+fmax = fft_raw_data['index'][kmax] * 2 * np.pi / T
+print fmax / freq
+
+kmax_should_be =  freq * T / (2 * np.pi)
+print kmax, kmax_should_be
+
 ax2.plot(fft_raw_data['index'] * 2 * np.pi / T, mod(fft_raw_data), 'k:', label="FFT(gridded data) [raw]" )
 ax2.plot(fft_raw_data_equal['index'] * 2 * np.pi / T, mod(fft_raw_data_equal), 'r:', label="EQSP FFT(gridded data) [raw]" )
 #ax2.plot(fft_raw_filter['index'] * 2 * np.pi / T, mod(fft_raw_filter), label="FFT(filter) [raw]" )
@@ -55,5 +67,9 @@ ax2.plot(fft_adjoint_equal['index'] * 2 * np.pi / T, mod(fft_adjoint_equal), col
 
 ax2.set_ylim(0, 1.3*max(mod(fft_raw_data)))
 ax2.legend(loc='best')
-ax2.axvline(10.0, ls='--', color='r')
+ax2.axvline(freq, ls='--', color='r')
+
+fig.savefig("org_and_gridded_signal.png")
+fig2.savefig('FFTs.png')
+
 plt.show()

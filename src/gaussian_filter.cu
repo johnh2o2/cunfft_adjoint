@@ -1,10 +1,25 @@
-/* Implements the Gaussian filter for the NFFT
- *
- * (c) John Hoffman 2016
- * jah5@princeton.edu
+/*   gaussian_filter.cu
+ *   ==================
+ *   
+ *   Implements the Gaussian filter
  * 
+ *   (c) John Hoffman 2016
+ * 
+ *   This file is part of cuNFFT_adjoint
+ *
+ *   cuNFFT_adjoint is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   cuNFFT_adjoint is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "filter.h"
 #include "utils.h"
 #include <stdlib.h>
@@ -60,22 +75,23 @@ set_filter_properties(plan *p){
 
 	// tau              :  is the characteristic length scale for the filter 
 	//                     (not to be confused with the filter_radius)
-
-	// below was the expression I found in Greengard & Lee 2003; I think 
-	// they must have had a typo, since this tau is much too small.
-	// tau = (1.0 / (p->Ndata * p->Ndata)) 
+	// NOTES:
+	//     below was the expression I found in Greengard & Lee 2003; I think 
+	//     they must have had a typo, since this tau is much too small.
+	//
+	//        tau = (1.0 / (p->Ndata * p->Ndata)) 
 	// 			* (PI / (R* (R - 0.5))) * p->filter_radius;
 	tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
 
 
 	LOG("setting p->fprops_host->(filter_radius, tau)");
-	// set filter radius and tau 
+	// set filter radius and tau of (CPU) filter_properties
 	p->fprops_host->tau = tau;
 	p->fprops_host->filter_radius = p->filter_radius;
 
 	
 	LOG("cuda malloc p->fprops_device");
-	// allocate device filter properties
+	// allocate (GPU) filter properties
 	checkCudaErrors(
 		cudaMalloc(
 			(void **) &(p->fprops_device), 
@@ -85,7 +101,7 @@ set_filter_properties(plan *p){
 
 	
 	LOG("cudaMalloc p->fprops_host->E(1,2,3)");
-	// allocate GPU memory for E1, E2, E3
+	// allocate GPU memory for E1, E2, E3 of CPU filter_properties
 	checkCudaErrors(
 		cudaMalloc(
 			(void **) &(p->fprops_host->E1), 
@@ -104,6 +120,9 @@ set_filter_properties(plan *p){
 			p->filter_radius * sizeof(dTyp)
 			)
 		);
+	checkCudaErrors(cudaMemset(p->fprops_host->E1, 0, p->Ndata * sizeof(dTyp)));
+	checkCudaErrors(cudaMemset(p->fprops_host->E2, 0, p->Ndata * sizeof(dTyp)));
+	checkCudaErrors(cudaMemset(p->fprops_host->E3, 0, p->filter_radius * sizeof(dTyp)));
 
 	LOG("cudaMemcpy p->fprops_host ==> p->fprops_device");
 	// Copy filter properties to device
@@ -180,7 +199,7 @@ normalize(Complex *f_hat, int Ngrid, filter_properties *f){
 
 	int k = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if ( k < Ngrid ){
-		dTyp fac = sqrt(f->tau / PI) * exp( -k * k * f->tau);
+		dTyp fac = sqrt(f->tau / PI) * exp( -k * k * f->tau );
 		f_hat[k].x *= fac;
 		f_hat[k].y *= fac;
 	}
