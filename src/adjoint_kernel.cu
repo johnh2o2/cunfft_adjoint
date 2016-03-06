@@ -51,26 +51,21 @@ __device__
 void 
 smooth_to_grid( 
 
-	Complex 		*f_data, 
-	Complex 		*f_grid, 			
+	dTyp 		*f_data, 
+	dTyp 		*f_grid, 			
 	const int 	i_data, 
 	const int 	i_grid, 
 	filter_properties 	*fprops,
 	const int  Ngrid
 ){
 
-	Complex val, val2;
-	dTyp fval;
+	dTyp val, fval;
 
-	if (f_data == NULL) {
-		val.x = 1.0;
-		val.y = 0.0;
-	}
-	else {
-		val.x = f_data[i_data].x;
-		val.y = f_data[i_data].y;
-	}
-
+	if (f_data == NULL) 
+		val = 1.0;
+	else 
+		val = f_data[i_data];
+	
 	int mstart = -fprops->filter_radius + 1;
 	int mend = fprops->filter_radius;
 
@@ -80,24 +75,17 @@ smooth_to_grid(
 		mend = Ngrid - i_grid;
 
 	for (int m = mstart; m < mend;  m++) {
-
-		fval = filter(i_data, i_grid, m, fprops);
-		
-		val2.x = val.x * fval;
-		val2.y = val.y * fval;
-
-		atomicAdd(&(f_grid[i_grid + m].x), val2.x);
-		atomicAdd(&(f_grid[i_grid + m].y), val2.y);
+		fval = val * filter(i_data, i_grid, m, fprops);
+		atomicAdd(&(f_grid[i_grid + m]), fval);
 	}
 }
 
 __global__ 
 void 
 fast_gridding( 
-
-	Complex 		*f_data, 
-	Complex 		*f_grid, 
-	const dTyp 		*x_data, 
+	dTyp 		*f_data, 
+	dTyp 		*f_grid, 
+	dTyp 		*x_data, 
 	const int 	Ngrid, 
 	const int 	Ndata, 
 	filter_properties 	*fprops
@@ -105,9 +93,8 @@ fast_gridding(
 	
 	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	
-	if (i < Ndata) {
-		
-		int j = (int) ((x_data[i] / (2 * PI)) * Ngrid);
+	if (i < Ndata) {	
+		int j = (int) ((x_data[i] + 0.5) * (Ngrid - 1));
 		smooth_to_grid(f_data, f_grid, i, j, fprops, Ngrid);
 	}
 }

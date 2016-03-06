@@ -48,14 +48,14 @@ set_filter_properties(plan *p){
 	//       so that we can free the (E1, E2, E3) pointers
 	//       because you can't do ([GPU]pointer)->(something)
 	//       
-	// [CPU]p { [CPU]fprops_host   { [GPU]E1, E2, E3, [CPU]tau, filter_radius },
-	//          [GPU]fprops_device { [GPU] ^,  ^,  ^, tau, filter_radius }  
+	// [CPU]p { [CPU]fprops_host   { [GPU]E1, E2, E3, [CPU]b, normfac, filter_radius },
+	//          [GPU]fprops_device { [GPU] ^,  ^,  ^, [GPU]b, normfac, filter_radius }  
 	//       }
 
 
 	LOG("in set_filter_properties");
 	
-	dTyp tau, R;
+	dTyp b, R;
 
 	// set plan filter radius
 	p->filter_radius = FILTER_RADIUS;
@@ -81,12 +81,13 @@ set_filter_properties(plan *p){
 	//
 	//        tau = (1.0 / (p->Ndata * p->Ndata)) 
 	// 			* (PI / (R* (R - 0.5))) * p->filter_radius;
-	tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
-
+	//tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
+        b = 2 * R / (2 * R - 1) * (p->filter_radius / PI);
 
 	LOG("setting p->fprops_host->(filter_radius, tau)");
-	// set filter radius and tau of (CPU) filter_properties
-	p->fprops_host->tau = tau;
+	// set filter radius and shape parameter of (CPU) filter_properties
+	p->fprops_host->b = b;
+	p->fprops_host->normfac = 1. / (sqrt(2 * PI) * p->Ngrid);
 	p->fprops_host->filter_radius = p->filter_radius;
 
 	
@@ -120,9 +121,6 @@ set_filter_properties(plan *p){
 			p->filter_radius * sizeof(dTyp)
 			)
 		);
-	checkCudaErrors(cudaMemset(p->fprops_host->E1, 0, p->Ndata * sizeof(dTyp)));
-	checkCudaErrors(cudaMemset(p->fprops_host->E2, 0, p->Ndata * sizeof(dTyp)));
-	checkCudaErrors(cudaMemset(p->fprops_host->E3, 0, p->filter_radius * sizeof(dTyp)));
 
 	LOG("cudaMemcpy p->fprops_host ==> p->fprops_device");
 	// Copy filter properties to device
@@ -137,14 +135,12 @@ set_filter_properties(plan *p){
 
 	LOG("calling setting_gpu_filter_properties");
 	// Precompute E1, E2, E3 on GPU
-	if (!EQUALLY_SPACED) {
-		
-		set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>
-			(p->fprops_device, p->g_x_data, p->Ngrid, p->Ndata);
+	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>> (p->fprops_device, 
+						p->g_x_data, p->Ngrid, p->Ndata);
 	
-		checkCudaErrors(cudaGetLastError());
-		checkCudaErrors(cudaDeviceSynchronize());
-	}
+	checkCudaErrors(cudaGetLastError());
+	checkCudaErrors(cudaDeviceSynchronize());
+	
 
 }
 
@@ -161,19 +157,18 @@ set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid,
 	if ( i < Ndata){
 		
 		// m = index of closest grid point to this data point
-		int m = (i * Ngrid) / Ndata;
+		int u = (int) (Ngrid * x[i] - f->filter_radius);
 		
 		// eps is the [0, 2pi] coordinate of the nearest gridpoint
-		dTyp eps = x[i] - (2 * PI * m) / Ngrid;
+		dTyp eps = Ngrid * x[i] - u;
 
-		f->E1[i] = exp(- eps * eps / (4 * f->tau));
-		f->E2[i] = exp( eps * PI / (Ngrid * f->tau)); 
+		f->E1[i] = exp(- eps * eps /  f->b ) / sqrt(PI * f->b);
+		f->E2[i] = exp(    2 * eps /  f->b ); 
 	}
 	else if ( i < Ndata + f->filter_radius){
 		// E3 has just FILTER_RADIUS values
-		int j = i - Ndata;
-		dTyp a = PI * PI * j * j / (Ngrid * Ngrid);
-		f->E3[j] = exp( -a / f->tau);
+		int m = i - Ndata;
+		f->E3[m] = exp( - m * m / f->b );
 	}
 	
 }
@@ -193,13 +188,18 @@ filter( const int j_data, const int i_grid,
 
 ///////////////////////////////////////////////////////////////////////////////
 // Deconvolves filter from final result (analytically)
+
+//__constant__ normfac
+// = 1 / (sqrt(2 * PI) * Ngrid)
+
 __global__
 void
 normalize(Complex *f_hat, int Ngrid, filter_properties *f){
 
 	int k = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if ( k < Ngrid ){
-		dTyp fac = sqrt(f->tau / PI) * exp( -k * k * f->tau );
+		dTyp K = ((dTyp) k) / Ngrid;
+		dTyp fac = f->normfac * exp( - K * K * f->b / 4. );
 		f_hat[k].x *= fac;
 		f_hat[k].y *= fac;
 	}

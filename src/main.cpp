@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include <math.h>
+#include <time.h>
 
 #include "nfft_adjoint.h"
 #include "typedefs.h"
@@ -32,121 +33,152 @@
 #define rmax 1000000
 #define Random ((dTyp) (rand() % rmax))/rmax
 
-int EQUALLY_SPACED;
-
+// computes |z|^2 for z \in C
 dTyp complexMod2(Complex a){
     return a.x * a.x + a.y * a.y;
 }
 
-void set_freqs( dTyp *f, dTyp L, int N){
-    for(int i = 0; i < N; i++)
-        f[i] = i / L;
+// converts clock_t value into seconds
+dTyp seconds(clock_t dt) {
+	return ((dTyp) dt) / ((dTyp)CLOCKS_PER_SEC);
 }
 
-dTyp mag( Complex value){
-    if (value.x == 0 && value.y == 0) return 0.0;
-    return sqrt(value.x * value.x + value.y * value.y);
+// generates unequal timing array
+dTyp * generateRandomTimes(int N) {
+	dTyp *x = (dTyp *) malloc( N * sizeof(dTyp));
+	x[0] = 0.;
+	for(int i = 1; i < N; i++) 
+		x[i] = x[i-1] + Random;
+	
+	dTyp xmax = x[N-1];
+	for(int i = 0; i < N; i++)
+		x[i] = (x[i] / xmax) - 0.5;
+
+	return x; 
+}
+
+// generates a periodic signal
+dTyp * generateSignal(dTyp *x, dTyp f, dTyp phi, int N) {
+	dTyp *signal = (dTyp *) malloc( N * sizeof(dTyp));
+	
+	for(int i = 0; i < N; i++)
+		signal[i] = cos((x[i] + 0.5) * f * 2 * PI - phi) + Random;
+
+	return signal;
+}
+
+
+// checks if any nans are in the fft
+int countNans(Complex *fft, int N){
+	int nans = 0;
+	for (int i = 0 ; i < N; i++)
+		if (isnan(fft[i].x) || isnan(fft[i].y))
+			nans++;
+	return nans;
+}
+
+// wrapper for cuda_nfft_adjoint
+void nfftAdjoint(dTyp *x, dTyp *f, Complex *fft, int n, int ng) {
+	plan *p = (plan *) malloc(sizeof(plan));
+	
+	init_plan(p, x, f, n, ng);
+        p->output_intermediate = 1;
+	
+	cuda_nfft_adjoint(p);
+
+	memcpy(fft, p->f_hat, ng * sizeof(Complex));
+
+	free_plan(p);
+}
+
+// Do timing tests
+void timing(int Nmin, int Nmax, int Ntests){
+	int      n, ng, nnans, dN = (Nmax - Nmin) / Ntests;
+	dTyp     *x, *f;
+	Complex  *fft;
+	plan     *p;
+	clock_t  start, dt;
+
+	for(int i = 0; i < Ntests; i++){
+		n = Nmin + dN * i;
+
+		// make Ngrid = 2^a , smallest a such that Ngrid > N
+		ng = (int) pow(2, ((int) log2(n)) + 1); 
+		
+		// generate a signal.
+		x = generateRandomTimes(n);
+		f = generateSignal(x, 10., 0.5, n);
+		fft = (Complex *)malloc(ng * sizeof(Complex));
+		
+		// initialize
+		p = (plan *) malloc(sizeof(plan));
+		//printf("%d, %d\n", n, ng);
+		init_plan(p, x, f, n, ng);
+
+		// calculate nfft
+		start = clock(); 
+		cuda_nfft_adjoint(p);
+		dt = clock() - start;
+
+		// output
+		nnans = countNans(fft, ng);
+		printf("%-10d %-10d %d %-10.3e\n",n, ng, nnans, seconds(dt));
+		
+		// free
+		free(fft);
+		free_plan(p);
+	}
+}
+
+void simple(int N, float R, float f) { 
+	dTyp *x, *y;
+	int Ng = ((int) R * N);
+	
+	Complex *fft = (Complex *) malloc( Ng * sizeof(Complex));
+	
+	x = generateRandomTimes(N);
+	y = generateSignal(x, f, 0., N);
+	
+	nfftAdjoint(x, y, fft, N, Ng);
+
+	// OUTPUT
+	FILE *out;
+	
+    	out = fopen("original_signal.dat", "w");
+    	for (int i=0; i < N; i++)
+    		fprintf(out, "%e %e\n", x[i], y[i]);
+    	fclose(out);
+
+	out = fopen("adjoint_nfft.dat", "w");
+	for (int i=0; i < N; i++)
+		fprintf(out, "%d %e %e\n", i, fft[i].x, fft[i].y);
+	fclose(out);
 }
 
 int main(int argc, char *argv[]) {
-    if(argc != 4) {
-    	fprintf(stderr, "usage: %s N R f\n\n", argv[0]);
-        fprintf(stderr, "N : number of data points\n");
-        fprintf(stderr, "R : Oversampling factor\n");
-        fprintf(stderr, "f : angular frequency of signal\n");
+    if(argc != 5) { 
+        fprintf(stderr, "usage: (1) %s s <n> <r> <f>\n", argv[0]);
+	fprintf(stderr, "       (2) %s t <nmin> <nmax> <ntests>\n\n", argv[0]);
+        fprintf(stderr, "n      : number of data points\n");
+        fprintf(stderr, "r      : Oversampling factor\n");
+        fprintf(stderr, "f      : angular frequency of signal\n");
+	fprintf(stderr, "nmin   : Smallest data size\n");
+	fprintf(stderr, "nmax   : Largest data size\n");
+	fprintf(stderr, "ntests : Number of runs\n");
+   
         exit(EXIT_FAILURE);
     }
 
+    if (argv[1][0] == 's')
+        simple(atoi(argv[2]), atof(argv[3]), atof(argv[4]));
 
-    int N = atoi(argv[1]);
-    int R = atoi(argv[2]);
-    dTyp freq = atof(argv[3]);
-
-
-
-    dTyp f[N], x[N], x_aligned[N], f_aligned[N];
-    EQUALLY_SPACED = 0;
-    //cudaSetDevice(0);
-
-    LOG("setting up data array.");
-    int i; char fname[200];
-    dTyp range, dx;
-    plan *p;
-    FILE *out, *out_result;
-
-    x[0] = 0;
-    dTyp phi = 0;//PI/2;
-
-
-    for (i = 1; i < N; i++) x[i] = Random + x[i - 1];
-    for (i = 1; i < N; i++) x[i] = (x[i] / x[N - 1]) * 2 * PI;
-    for (i = 0; i < N; i++) f[i] = cos(freq * x[i] - phi) + Random;
-
-    range = x[N - 1] - x[0];
-    dx = range/(N - 1);
-    for(i=0; i < N; i++) {
-        x_aligned[i] = x[0] + dx * i;
-        f_aligned[i] = cos(freq * x_aligned[i] - phi);
+    else if (argv[1][0] == 't')
+        timing(atoi(argv[2]), atoi(argv[3]), atoi(argv[4]));
+    
+    else {
+        fprintf(stderr, "What does %c mean? Should be either 's' or 't'.\n", argv[1][0]);
+        exit(EXIT_FAILURE);
     }
-
-    LOG("scaling x");
-    scale_x(x, N);
-    scale_x(x_aligned, N);
-
-    out = fopen("original_unequally_spaced.dat", "w");
-    for (i=0; i < N; i++)
-        fprintf(out, "%e %e\n", x[i] * range, f[i]);
-    fclose(out);
-
-    out = fopen("original_equally_spaced.dat", "w");
-    for (i=0; i < N; i++)
-        fprintf(out, "%e %e\n", x_aligned[i] * range, f_aligned[i]);
-    fclose(out);
-    LOG("done.");
-
-    ///////////////////////////////////
-    // UNEQUALLY SPACED
-    p = (plan *) malloc(sizeof(plan));
-
-    LOG("about to do init_plan.");
-    init_plan(p, f, x, N, R*N);
-    sprintf(p->out_root, "unequally_spaced");
-
-    LOG("about to do nfft adjoint.");
-    cuda_nfft_adjoint(p);
-    //print_plan(p);
-    
-    sprintf(fname, "%s_FFT.dat", p->out_root);
-    out_result = fopen(fname, "w");
-    for (i = 0; i < p->Ngrid; i++ ) 
-        fprintf(out_result,"%-5d %-15.5e %-15.5e\n",i , p->f_hat[i].x, p->f_hat[i].y);
-    fclose(out_result);
-
-    LOG("about to free plan.");
-    free_plan(p);
-
-    ///////////////////////////////////
-    // EQUALLY SPACED
-    p = (plan *) malloc(sizeof(plan));
-
-    LOG("about to do init_plan.");
-    //EQUALLY_SPACED = 1;
-    init_plan(p, f_aligned, x_aligned, N, R *N);
-    sprintf(p->out_root, "equally_spaced");
-
-    LOG("about to do nfft adjoint.");
-    cuda_nfft_adjoint(p);
-    //print_plan(p);
-    
-    sprintf(fname, "%s_FFT.dat", p->out_root);
-    out_result = fopen(fname, "w");
-    for (i = 0; i < p->Ngrid; i++ ) 
-        fprintf(out_result,"%-5d %-15.5e %-15.5e\n",i , p->f_hat[i].x, p->f_hat[i].y);
-    fclose(out_result);
-
-    LOG("about to free plan.");
-    free_plan(p);
-
 
     return EXIT_SUCCESS;
 }

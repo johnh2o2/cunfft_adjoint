@@ -40,14 +40,10 @@
 
 #ifdef DOUBLE_PRECISION
     #define dTyp double
-    //#define Complex doubleComplex
     #define Complex cufftDoubleComplex 
-    #define fftComplex cufftDoubleComplex
 #else
     #define dTyp float
-    //#define Complex singleComplex
     #define Complex cufftComplex
-    #define fftComplex cufftComplex
 #endif
 
 // Never know the safest way to use PI (I'm guessing it's in math.h, but why not confuse people, right?)
@@ -74,7 +70,7 @@
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
     if (code != cudaSuccess)
     {
-        fprintf(stderr, "ERROR %-24s L[%-5d]: %s\n", file, line, cudaGetErrorString(code));
+        fprintf(stderr, "CUDA ERROR %-24s L[%-5d]: %s\n", file, line, cudaGetErrorString(code));
         if (abort) exit(code);
     }
 }
@@ -82,15 +78,10 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
 typedef float2 singleComplex;
 typedef double2 doubleComplex;
 
-// This is for unit testing -- if this is set to 1, the program assumes you're just doing
-// a standard FFT, since your data is equally spaced.
-extern int EQUALLY_SPACED;
-
-
 // FILTER PROPERTIES struct
 typedef struct {
-    // kernel size
-    dTyp tau;
+    // shape parameter, normalization factor
+    dTyp b, normfac;
 
     // maximum cutoff for smoothing
     int filter_radius;
@@ -113,8 +104,11 @@ typedef struct {
     Complex *f_hat;
 
     // GPU variables
-    Complex *g_f_hat, *g_f_filter, *g_f_data;
-    dTyp *g_x_data;
+    Complex *g_f_hat, *g_f_filter;
+    dTyp *g_x_data, *g_f_data, *g_f_grid;
+ 
+    // print out the gridded data and the fft
+    int output_intermediate;
 
     // size of incoming data array
     int Ndata, 
@@ -131,7 +125,7 @@ typedef struct {
     filter_properties *fprops_host, *fprops_device;
 
     // tag to add onto output filenames (unit testing)
-    char out_root[100];
+    //char out_root[100];
 
 } plan;
 
