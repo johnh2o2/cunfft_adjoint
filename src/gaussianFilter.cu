@@ -82,12 +82,12 @@ set_filter_properties(plan *p){
 	//        tau = (1.0 / (p->Ndata * p->Ndata)) 
 	// 			* (PI / (R* (R - 0.5))) * p->filter_radius;
 	//tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
-        b = 2 * R / (2 * R - 1) * (p->filter_radius / PI);
+    b = 2 * R / (2 * R - 1) * (p->filter_radius / PI);
 
 	LOG("setting p->fprops_host->(filter_radius, tau)");
 	// set filter radius and shape parameter of (CPU) filter_properties
 	p->fprops_host->b = b;
-	p->fprops_host->normfac = 1. / (sqrt(2 * PI) * p->Ngrid);
+	p->fprops_host->normfac = sqrt(2 * PI); // * p->Ngrid;
 	p->fprops_host->filter_radius = p->filter_radius;
 
 	
@@ -198,8 +198,8 @@ normalize(Complex *f_hat, int Ngrid, filter_properties *f){
 
 	int k = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if ( k < Ngrid ){
-		dTyp K = ((dTyp) k) / Ngrid;
-		dTyp fac = f->normfac * exp( - K * K * f->b / 4. );
+		dTyp K = ((dTyp) k) / ((dTyp) Ngrid);// - 0.5;
+		dTyp fac = f->normfac * exp( K * K * f->b / 4. );
 		f_hat[k].x *= fac;
 		f_hat[k].y *= fac;
 	}

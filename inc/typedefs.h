@@ -32,18 +32,31 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
-
 // #define DOUBLE_PRECISION
 // #define DEBUG
 
 #define DEBUGSTREAM stderr
 
 #ifdef DOUBLE_PRECISION
-    #define dTyp double
-    #define Complex cufftDoubleComplex 
+#define dTyp double
+#define cTyp double complex
+#define Complex cufftDoubleComplex 
+#define cuComplexDivide cuCdiv
+#define cuReal cuCreal
+#define cuImag cuCimag
+#define cuAbs  cuCabs
+#define cuSqrt sqrt
+#define absoluteValueReal fabs
 #else
-    #define dTyp float
-    #define Complex cufftComplex
+#define dTyp float
+#define cTyp float complex
+#define Complex cufftComplex
+#define cuComplexDivide cuCdivf
+#define cuReal cuCrealf
+#define cuImag cuCimagf
+#define cuAbs  cuCabsf
+#define cuSqrt sqrtf
+#define absoluteValueReal fabsf
 #endif
 
 // Never know the safest way to use PI (I'm guessing it's in math.h, but why not confuse people, right?)
@@ -67,16 +80,16 @@
 #define checkCudaErrors(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
 // inline function for printing cuda errors
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
+inline void gpuAssert(cudaError_t code, const char *file, int line) {
     if (code != cudaSuccess)
     {
         fprintf(stderr, "CUDA ERROR %-24s L[%-5d]: %s\n", file, line, cudaGetErrorString(code));
-        if (abort) exit(code);
+        exit(code);
     }
 }
 
-typedef float2 singleComplex;
-typedef double2 doubleComplex;
+//typedef float2 singleComplex;
+//typedef double2 doubleComplex;
 
 // FILTER PROPERTIES struct
 typedef struct {
@@ -97,18 +110,25 @@ typedef struct {
     // when implementing some other filter.
 } filter_properties;
 
+typedef enum { 
+  OUTPUT_INTERMEDIATE = 0x01,
+  CALCULATE_WINDOW_FUNCTION = 0x02,
+  DONT_TRANSFER_TO_CPU = 0x04,
+  PRINT_TIMING = 0x08
+} FLAGS;
+
 // Our internal PLAN datatype
 typedef struct {
     // CPU variables
     dTyp *x_data, *f_data;
-    Complex *f_hat;
+    Complex *f_hat, *f_hat_win;
 
     // GPU variables
-    Complex *g_f_hat, *g_f_filter;
-    dTyp *g_x_data, *g_f_data, *g_f_grid;
+    Complex *g_f_hat, *g_f_hat_win;
+    dTyp *g_x_data, *g_f_data, *g_f_grid, *g_f_grid_win;
  
-    // print out the gridded data and the fft
-    int output_intermediate;
+    // optional directions
+    unsigned int flags;
 
     // size of incoming data array
     int Ndata, 
@@ -131,5 +151,4 @@ typedef struct {
 
 // function to free plan memory
 void free_plan(plan *p);
-
 #endif

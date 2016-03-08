@@ -25,6 +25,9 @@
 #include "filter.h"
 #include <stdlib.h>
 
+#define rmax 1000000
+#define Random ((dTyp) (rand() % rmax))/rmax
+
 #ifdef DOUBLE_PRECISION
 
 __device__ double atomicAdd(double* address, double val)
@@ -43,24 +46,90 @@ old = atomicCAS(address_as_ull, assumed,
 
 #endif
 
+__host__ unsigned int nextPowerOfTwo(unsigned int v) {
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++;
+	return v;
+}
+
+__host__
+void
+meanAndVariance(int n, const dTyp *y, dTyp *mean , dTyp *variance) {
+  *mean = 0;
+  dTyp M2 = 0, delta;
+  
+  int nn = 1;
+  for(int i = 0; i < n; i++, nn++) {
+    delta = y[i] - *mean;
+    *mean += delta / nn;
+    M2 += delta * (y[i] - *mean);
+  }
+  *variance = M2/(n - 1);
+}
 __device__
-Complex
-scalarComplexMult( Complex cval, dTyp rval) {
-	Complex val;
-	val.x = cval.x * rval;
-	val.y = cval.y * rval;
-	return val;
+dTyp
+sign(dTyp a, dTyp b) {
+  	return ((b >= 0) ? 1 : -1) * absoluteValueReal(a);
 }
 
 __device__
-void 
-constantComplexMult( Complex *cval, dTyp rval, int N) {
-	for (int i = 0; i < N; i++) {
-		cval[i].x *= rval;
-		cval[i].y *= rval;
-	} 
+dTyp
+square(dTyp a) { 
+	return a * a; 
 }
 
+__global__ void dummyKernel() { 
+	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+}
+
+__host__ void launchDummyKernel() {
+	dummyKernel<<<1, 1>>>();
+}
+
+
+// converts clock_t value into seconds
+dTyp seconds(clock_t dt) {
+	return ((dTyp) dt) / ((dTyp)CLOCKS_PER_SEC);
+}
+
+// generates unequal timing array
+dTyp * generateRandomTimes(int N) {
+	dTyp *x = (dTyp *) malloc( N * sizeof(dTyp));
+	x[0] = 0.;
+	for (int i = 1; i < N; i++)
+		x[i] = x[i - 1] + Random;
+
+	dTyp xmax = x[N - 1];
+	for (int i = 0; i < N; i++)
+		x[i] = (x[i] / xmax) - 0.5;
+
+	return x;
+}
+
+// generates a periodic signal
+dTyp * generateSignal(dTyp *x, dTyp f, dTyp phi, int N) {
+	dTyp *signal = (dTyp *) malloc( N * sizeof(dTyp));
+
+	for (int i = 0; i < N; i++)
+		signal[i] = cos((x[i] + 0.5) * f * 2 * PI - phi) + Random;
+
+	return signal;
+}
+
+
+// checks if any nans are in the fft
+int countNans(Complex *fft, int N) {
+	int nans = 0;
+	for (int i = 0 ; i < N; i++)
+		if (isnan(fft[i].x) || isnan(fft[i].y))
+			nans++;
+	return nans;
+}
 
 
 
@@ -91,23 +160,132 @@ void scale_x(dTyp *x, int size){
 }
 
 __host__
+void 
+init_plan(
+	plan 			    *p, 
+	const dTyp 			*x, 
+	const dTyp 			*f, 
+	int 	            Ndata, 
+	int 	            Ngrid,
+	unsigned int        plan_flags
+   
+) {
+	LOG("in init_plan -- mallocing for CPU");
+	p->Ndata = Ndata;
+	p->Ngrid = Ngrid;
+	p->flags = plan_flags;
+	//p->out_root = NULL;
+
+	p->x_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
+	p->f_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
+	p->f_hat  = (Complex *) malloc( Ngrid * sizeof(Complex));
+	p->f_hat_win = (Complex *) malloc(Ngrid * sizeof(Complex));
+
+	LOG("memcpy x and f to plan");
+	memcpy(p->x_data, x, Ndata * sizeof(dTyp));
+	
+	if (f == NULL) {
+		eprint("you passed a NULL pointer to init_plan.\n");
+	} else {
+		memcpy(p->f_data, f, Ndata * sizeof(dTyp));
+        }
+
+	// Allocate GPU memory
+	LOG("cudaMalloc -- p->g_f_data");
+	checkCudaErrors(
+		cudaMalloc((void **) &(p->g_f_data), 
+			p->Ndata * sizeof(dTyp))
+	);
+	LOG("cudaMalloc -- p->g_x_data");
+	checkCudaErrors(
+		cudaMalloc((void **) &(p->g_x_data), 
+			p->Ndata * sizeof(dTyp))
+	);
+    checkCudaErrors(
+            cudaMalloc((void **) &(p->g_f_grid),
+                    p->Ngrid * sizeof(dTyp))
+    );
+	LOG("cudaMalloc -- p->g_f_hat");
+	checkCudaErrors(
+		cudaMalloc((void **) &(p->g_f_hat), 
+			p->Ngrid * sizeof(Complex))
+	);
+
+	if( p->flags & CALCULATE_WINDOW_FUNCTION ) {
+		LOG("initializing memory for window function");
+		p->f_hat_win = (Complex *) malloc( Ngrid * sizeof(Complex));
+	
+		// window function
+		checkCudaErrors(
+			cudaMalloc((void **) &(p->g_f_hat_win), 
+				p->Ngrid * sizeof(Complex))
+		);
+		checkCudaErrors(
+	        cudaMalloc((void **) &(p->g_f_grid_win),
+	            p->Ngrid * sizeof(dTyp))
+	    );
+
+		// set to zero
+	    checkCudaErrors(
+			cudaMemset(p->g_f_hat_win, 0, p->Ngrid * sizeof(Complex))
+		);
+		checkCudaErrors(
+        	cudaMemset(p->g_f_grid_win, 0, p->Ngrid * sizeof(dTyp))
+		); 
+	}
+
+		
+    // set things to zero
+	checkCudaErrors(
+		cudaMemset(p->g_f_hat, 0, p->Ngrid * sizeof(Complex))
+	);
+	
+    checkCudaErrors(
+        cudaMemset(p->g_f_grid, 0, p->Ngrid * sizeof(dTyp))
+	);
+
+	LOG("cudaMemcpy f_data_complex ==> p->g_f_data");
+	// Copy f_j -> GPU
+	checkCudaErrors(
+		cudaMemcpy(p->g_f_data, p->f_data, 
+			p->Ndata * sizeof(dTyp), cudaMemcpyHostToDevice)
+	);
+	
+	LOG("cudaMemcpy p->x_data ==> p->g_x_data");
+	// Copy x_j -> GPU
+	checkCudaErrors(
+		cudaMemcpy(p->g_x_data, p->x_data, 
+			p->Ndata * sizeof(dTyp), cudaMemcpyHostToDevice)
+	);
+
+	checkCudaErrors(cudaDeviceSynchronize());
+
+	LOG("done here, calling set_filter_properties");
+	// copy filter information + perform 
+	// precomputation
+	set_filter_properties(p);
+}
+
+__host__
 void
 printComplex_d(Complex *a_d, int N, FILE* out){
-	Complex cpu[N];
+	Complex * cpu = (Complex *)malloc( N * sizeof(Complex));
 	checkCudaErrors(cudaMemcpy(cpu, a_d, N * sizeof(Complex), cudaMemcpyDeviceToHost ));
 
 	for(int i = 0;i < N; i++)
 		fprintf(out, "%-5d %-10.3e %-10.3e\n", i, cpu[i].x, cpu[i].y);
+        free(cpu);
 }
 
 __host__
 void
 printReal_d(dTyp *a, int N, FILE *out){
-	dTyp copy[N];
+	dTyp * copy = (dTyp *) malloc(N * sizeof(dTyp));
         checkCudaErrors(cudaMemcpy(copy, a, N * sizeof(dTyp), cudaMemcpyDeviceToHost));
 
 	for(int i = 0;i < N; i++)
 		fprintf(out, "%-5d %-10.3e\n", i, copy[i]);
+        free(copy);
 }
 __host__
 void
@@ -191,11 +369,22 @@ void free_plan(plan *p){
 	LOG("cudaFree p->g_x_data");
 	checkCudaErrors(cudaFree(p->g_x_data));
 
+	LOG("cudaFree p->g_f_grid");
+	checkCudaErrors(cudaFree(p->g_f_grid));
+
+	if(p->flags & CALCULATE_WINDOW_FUNCTION) {
+		checkCudaErrors(cudaFree(p->g_f_hat_win));
+		checkCudaErrors(cudaFree(p->g_f_grid_win));
+		free(p->f_hat_win);
+	}
+
 	LOG("free     p");
 	free(p);
 
 	LOG("=====================");
 }
+
+
 
 
 __global__ void print_filter_props_d(filter_properties *f, int Ndata){
@@ -209,93 +398,4 @@ __global__ void print_filter_props_d(filter_properties *f, int Ndata){
 	for(int i = 0; i < f->filter_radius; i++)
 		printf("\tf->E3[%-3d] = %-10.3e\n", i, f->E3[i]); 
 	printf("\t---------------------\n");
-}
-__host__
-void 
-init_plan(
-	plan 			*p, 
-	dTyp 			*x, 
-	dTyp 			*f, 
-	int 	Ndata, 
-	int 	Ngrid
-
-){
-	//checkCudaErrors(cudaSetDevice(0));
-	p->output_intermediate = 0; // don't print things
-
-	LOG("in init_plan -- mallocing for CPU");
-	p->Ndata = Ndata;
-	p->Ngrid = Ngrid;
-	//p->out_root = NULL;
-
-	p->x_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
-	p->f_data = (dTyp *)    malloc( Ndata * sizeof(dTyp));
-	p->f_hat  = (Complex *) malloc( Ngrid * sizeof(Complex));
-
-	LOG("memcpy x and f to plan");
-	memcpy(p->x_data, x, Ndata * sizeof(dTyp));
-	memcpy(p->f_data, f, Ndata * sizeof(dTyp));
-
-	// Allocate GPU memory
-	LOG("cudaMalloc -- p->g_f_data");
-	checkCudaErrors(
-		cudaMalloc((void **) &(p->g_f_data), 
-			p->Ndata * sizeof(dTyp))
-	);
-	LOG("cudaMalloc -- p->g_x_data");
-	checkCudaErrors(
-		cudaMalloc((void **) &(p->g_x_data), 
-			p->Ndata * sizeof(dTyp))
-	);
-        checkCudaErrors(
-                cudaMalloc((void **) &(p->g_f_grid),
-                        p->Ngrid * sizeof(dTyp))
-        );
-	LOG("cudaMalloc -- p->g_f_hat");
-	checkCudaErrors(
-		cudaMalloc((void **) &(p->g_f_hat), 
-			p->Ngrid * sizeof(Complex))
-	);
-
-	//LOG("cudaMalloc -- p->g_f_filter");
-	//checkCudaErrors(
-	//	cudaMalloc((void **) &(p->g_f_filter), 
-	//		p->Ngrid * sizeof(Complex))
-	//);
-	
-        // set things to zero
-	checkCudaErrors(
-		cudaMemset(p->g_f_hat, 0, p->Ngrid * sizeof(Complex))
-	);
-	//checkCudaErrors(
-	//	cudaMemset(p->g_f_filter, 0, p->Ngrid * sizeof(Complex))
-	//);
-        checkCudaErrors(
-                cudaMemset(p->g_f_grid, 0, p->Ngrid * sizeof(dTyp))
-	);
-       
-	
-	
-
-	LOG("cudaMemcpy f_data_complex ==> p->g_f_data");
-	// Copy f_j -> GPU
-	checkCudaErrors(
-		cudaMemcpy(p->g_f_data, p->f_data, 
-			p->Ndata * sizeof(dTyp), cudaMemcpyHostToDevice)
-	);
-
-
-	LOG("cudaMemcpy p->x_data ==> p->g_x_data");
-	// Copy x_j -> GPU
-	checkCudaErrors(
-		cudaMemcpy(p->g_x_data, p->x_data, 
-			p->Ndata * sizeof(dTyp), cudaMemcpyHostToDevice)
-	);
-
-	checkCudaErrors(cudaDeviceSynchronize());
-
-	LOG("done here, calling set_filter_properties");
-	// copy filter information + perform 
-	// precomputation
-	set_filter_properties(p);
 }

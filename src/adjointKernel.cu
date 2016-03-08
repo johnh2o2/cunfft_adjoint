@@ -20,33 +20,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <cuComplex.h>
+
+
 #include "typedefs.h"
 #include "adjoint_kernel.h"
 #include "filter.h"
 #include "utils.h"
 
 
-__device__ dTyp complexModulus2(Complex a){
-	return a.x * a.x + a.y * a.y;
-}
-
-__device__ Complex complexDivide(Complex a, Complex b){
-	Complex solution;
-	dTyp modb2 = complexModulus2(b);
-	if (modb2 == 0){
-		solution.x = 0;
-		solution.y = 0;
-		return solution;
-	}
-
-	solution.x = a.x * b.x + a.y * b.y;
-	solution.y = a.y * b.x - a.x * b.y;
-	solution.x /= modb2;
-	solution.y /= modb2;
-
-	return solution;
-
-}
 __device__ 
 void 
 smooth_to_grid( 
@@ -60,10 +43,9 @@ smooth_to_grid(
 ){
 
 	dTyp val, fval;
-
-	if (f_data == NULL) 
+	if (f_data == NULL)
 		val = 1.0;
-	else 
+	else
 		val = f_data[i_data];
 	
 	int mstart = -fprops->filter_radius + 1;
@@ -109,6 +91,6 @@ divide_by_spectral_window(
 ){
 	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if (i < N) 
-		sig[i] = complexDivide(sig[i], filt[i]);
+		sig[i] = cuComplexDivide(sig[i], filt[i]);
 	
 }
