@@ -3,7 +3,7 @@
 # Build script for project
 #
 ################################################################################
-ARCH		:= sm_52
+ARCH		:= 52
 
 # Add source files here
 NAME            := cuna
@@ -22,10 +22,10 @@ BUILDDIR=./build
 LIBDIR=./lib
 BINDIR=./bin
 
-
+OPTIMIZE=
 DEFS := -DBLOCK_SIZE=$(BLOCK_SIZE) -DVERSION=\"$(VERSION)\"
-NVCCFLAGS := $(DEFS) -Xcompiler -fpic --ptxas-options=-v -arch=$(ARCH)
-CFLAGS := $(DEFS) -fPIC -Wall
+NVCCFLAGS := $(DEFS) -Xcompiler -fpic --ptxas-options=-v --gpu-architecture=compute_$(ARCH) --gpu-code=sm_$(ARCH),compute_$(ARCH) 
+CFLAGS := $(DEFS) -fPIC -Wall $(OPTIMIZE)
 
 CUDA_LIBS =`pkg-config --libs cudart-$(CUDA_VERSION)` 
 CUDA_LIBS+=`pkg-config --libs cufft-$(CUDA_VERSION)`
@@ -89,6 +89,6 @@ RM=rm -f
 
 
 clean : 
-	$(RM) *.dat *.png $(BUILDDIR)/*.o $(BINDIR)/* $(LIBDIR)/* 
+	$(RM) *.dat *.png $(BUILDDIR)/* $(BINDIR)/* $(LIBDIR)/* 
 
 print-%  : ; @echo $* = $($*)
