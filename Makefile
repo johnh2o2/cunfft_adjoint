@@ -6,7 +6,7 @@
 ARCH		:= sm_52
 
 # Add source files here
-EXECUTABLE      := libcunfft
+NAME            := cuna
 ################################################################################
 # Rules and targets
 NVCC=nvcc
@@ -16,20 +16,16 @@ CUDA_VERSION=7.5
 BLOCK_SIZE=256
 VERSION=1.0
 
-SRCDIR=src
-HEADERDIR=inc
-BUILDDIR=.
+SRCDIR=./src
+HEADERDIR=./inc
+BUILDDIR=./build
+LIBDIR=./lib
+BINDIR=./bin
 
 
-ifeq ($(precision), single)
-  PRECISION=
-else
-  PRECISION=-DDOUBLE_PRECISION
-endif 
-
-ALLFLAGS := -DBLOCK_SIZE=$(BLOCK_SIZE) -DVERSION=\"$(VERSION)\" $(PRECISION)
-NVCCFLAGS := $(ALLFLAGS) -Xcompiler -fpic --ptxas-options=-v -arch=$(ARCH)
-CFLAGS := $(ALLFLAGS) -fPIC -Wall
+DEFS := -DBLOCK_SIZE=$(BLOCK_SIZE) -DVERSION=\"$(VERSION)\"
+NVCCFLAGS := $(DEFS) -Xcompiler -fpic --ptxas-options=-v -arch=$(ARCH)
+CFLAGS := $(DEFS) -fPIC -Wall
 
 CUDA_LIBS =`pkg-config --libs cudart-$(CUDA_VERSION)` 
 CUDA_LIBS+=`pkg-config --libs cufft-$(CUDA_VERSION)`
@@ -41,37 +37,58 @@ LIBS := $(CUDA_LIBS) -lm
 
 ###############################################################################
 
-CPP_FILES := $(wildcard $(SRCDIR)/*.cpp)
-CU_FILES  := $(wildcard $(SRCDIR)/*.cu)
+CPP_FILES := $(notdir $(wildcard $(SRCDIR)/*.cpp))
+CU_FILES  := $(notdir $(wildcard $(SRCDIR)/*.cu))
 
-CPP_OBJ_FILES := $(notdir $(CPP_FILES:.cpp=.o))
-CU_OBJ_FILES := $(notdir $(CU_FILES:.cu=.o))
+CPP_OBJ_FILES_SINGLE :=$(CPP_FILES:%.cpp=$(BUILDDIR)/%f.o)
+CPP_OBJ_FILES_DOUBLE :=$(CPP_FILES:%.cpp=$(BUILDDIR)/%d.o)
+
+CU_OBJ_FILES_SINGLE := $(CU_FILES:%.cu=$(BUILDDIR)/%f.o)
+CU_OBJ_FILES_DOUBLE := $(CU_FILES:%.cu=$(BUILDDIR)/%d.o)
+
 
 INCLUDE := $(CUDA_INCLUDE) -I$(HEADERDIR)
 
-all : $(EXECUTABLE)
+all : single double test-single test-double
 
-$(EXECUTABLE): $(CPP_OBJ_FILES) $(CU_OBJ_FILES) dlink.o
-	$(CC) -shared -o $@.so $^ $(LIBS)
-	mv $@.so ..
+single : lib$(NAME)f.so
+double : lib$(NAME)d.so
 
-test : $(CPP_OBJ_FILES) $(CU_OBJ_FILES) dlink.o
-	$(CC) -o testing $^ $(LIBS)
+%f.so : $(CU_OBJ_FILES_SINGLE) $(CPP_OBJ_FILES_SINGLE) $(BUILDDIR)/dlink-single.o
+	$(CC) -shared -o $(LIBDIR)/$@ $^ $(LIBS)
 
-dlink.o : $(CU_OBJ_FILES)
-	$(NVCC) $(NVCCFLAGS) $(INCLUDE) -dlink $^ -o dlink.o
+%d.so : $(CU_OBJ_FILES_DOUBLE) $(CPP_OBJ_FILES_DOUBLE) $(BUILDDIR)/dlink-double.o
+	$(CC) -shared -o $(LIBDIR)/$@ $^ $(LIBS)
 
-$(CU_OBJ_FILES) : 
-	$(NVCC) $(NVCCFLAGS) $(INCLUDE) -rdc=true -c $(SRCDIR)/$(*F).cu -o $(*F).o
+test-single :
+	$(CC) $(CFLAGS) $(INCLUDE) -o $(BINDIR)/$@ test.cpp -L$(LIBDIR) -lm -l$(NAME)f
 
-$(CPP_OBJ_FILES) : 
-	$(CC) $(CFLAGS) $(INCLUDE) -c $(SRCDIR)/$(*F).cpp -o $(*F).o
+test-double : 
+	$(CC) $(CFLAGS) $(INCLUDE) -DDOUBLE_PRECISION -o $(BINDIR)/$@ test.cpp -L$(LIBDIR) -lm -l$(NAME)d
+
+%-single.o : $(CU_OBJ_FILES_SINGLE)
+	$(NVCC) $(NVCCFLAGS) $(INCLUDE) -dlink $^ -o $@
+
+%-double.o : $(CU_OBJ_FILES_DOUBLE)
+	$(NVCC) $(NVCCFLAGS) $(INCLUDE) -DDOUBLE_PRECISION -dlink $^ -o $@
+
+$(CU_OBJ_FILES_SINGLE) : 
+	$(NVCC) $(NVCCFLAGS) $(INCLUDE) -rdc=true -c $(SRCDIR)/$(notdir $(subst f.o,.cu,$@)) -o $(BUILDDIR)/$(notdir $@)
+
+$(CU_OBJ_FILES_DOUBLE) : 
+	$(NVCC) $(NVCCFLAGS) $(INCLUDE) -DDOUBLE_PRECISION -rdc=true -c $(SRCDIR)/$(notdir $(subst d.o,.cu,$@)) -o $(BUILDDIR)/$(notdir $@)
+
+$(CPP_OBJ_FILES_SINGLE) : 
+	$(CC) $(CFLAGS) $(INCLUDE) -c $(SRCDIR)/$(notdir $(subst f.o,.cpp,$@)) -o $(BUILDDIR)/$(notdir $@)
+
+$(CPP_OBJ_FILES_DOUBLE) : 
+	$(CC) $(CFLAGS) $(INCLUDE) -DDOUBLE_PRECISION -c $(SRCDIR)/$(notdir $(subst d.o,.cpp,$@)) -o $(BUILDDIR)/$(notdir $@)
 
 .PHONY : clean
 RM=rm -f
 
 
 clean : 
-	$(RM) *.dat *.png $(BUILDDIR)/*o testing $(EXECUTABLE).so
+	$(RM) *.dat *.png $(BUILDDIR)/*.o $(BINDIR)/* $(LIBDIR)/* 
 
 print-%  : ; @echo $* = $($*)

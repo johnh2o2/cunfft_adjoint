@@ -5,26 +5,26 @@
  * 
  *   (c) John Hoffman 2016
  * 
- *   This file is part of cuNFFT_adjoint
+ *   This file is part of CUNA
  *
- *   cuNFFT_adjoint is free software: you can redistribute it and/or modify
+ *   CUNA is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   cuNFFT_adjoint is distributed in the hope that it will be useful,
+ *   CUNA is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with CUNA.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "filter.h"
-#include "utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "cuna_filter.h"
+#include "cuna_utils.h"
 
 #ifdef DOUBLE_PRECISION
 #define FILTER_RADIUS 12
@@ -188,9 +188,6 @@ filter( const int j_data, const int i_grid,
 
 ///////////////////////////////////////////////////////////////////////////////
 // Deconvolves filter from final result (analytically)
-
-//__constant__ normfac
-// = 1 / (sqrt(2 * PI) * Ngrid)
 
 __global__
 void

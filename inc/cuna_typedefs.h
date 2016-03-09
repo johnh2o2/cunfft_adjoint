@@ -1,27 +1,27 @@
-/*   typedefs.h
- *   ==========
+/*   cuna_typedefs.h
+ *   ===============
  *   
- *   Contains global variables and type definitions for the rest of cuNFFT_adjoint
+ *   Contains global variables and type definitions for the rest of CUNA
  * 
  *   (c) John Hoffman 2016
  * 
- *   This file is part of cuNFFT_adjoint
+ *   This file is part of CUNA
  *
- *   cuNFFT_adjoint is free software: you can redistribute it and/or modify
+ *   CUNA is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   cuNFFT_adjoint is distributed in the hope that it will be useful,
+ *   CUNA is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with CUNA.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef TYPEDEFS_
-#define TYPEDEFS_
+#ifndef CUNA_TYPEDEFS_H
+#define CUNA_TYPEDEFS_H
 
 // standard headers (needed for print operations, etc)
 #include <stdlib.h>
@@ -32,31 +32,29 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
-// #define DOUBLE_PRECISION
-// #define DEBUG
 
 #define DEBUGSTREAM stderr
 
 #ifdef DOUBLE_PRECISION
-#define dTyp double
-#define cTyp double complex
-#define Complex cufftDoubleComplex 
-#define cuComplexDivide cuCdiv
-#define cuReal cuCreal
-#define cuImag cuCimag
-#define cuAbs  cuCabs
-#define cuSqrt sqrt
-#define absoluteValueReal fabs
+  #define dTyp double
+  #define cTyp double complex
+  #define Complex cufftDoubleComplex 
+  #define cuComplexDivide cuCdiv
+  #define cuReal cuCreal
+  #define cuImag cuCimag
+  #define cuAbs  cuCabs
+  #define cuSqrt sqrt
+  #define absoluteValueReal fabs
 #else
-#define dTyp float
-#define cTyp float complex
-#define Complex cufftComplex
-#define cuComplexDivide cuCdivf
-#define cuReal cuCrealf
-#define cuImag cuCimagf
-#define cuAbs  cuCabsf
-#define cuSqrt sqrtf
-#define absoluteValueReal fabsf
+  #define dTyp float
+  #define cTyp float complex
+  #define Complex cufftComplex
+  #define cuComplexDivide cuCdivf
+  #define cuReal cuCrealf
+  #define cuImag cuCimagf
+  #define cuAbs  cuCabsf
+  #define cuSqrt sqrtf
+  #define absoluteValueReal fabsf
 #endif
 
 // Never know the safest way to use PI (I'm guessing it's in math.h, but why not confuse people, right?)
@@ -88,9 +86,6 @@ inline void gpuAssert(cudaError_t code, const char *file, int line) {
     }
 }
 
-//typedef float2 singleComplex;
-//typedef double2 doubleComplex;
-
 // FILTER PROPERTIES struct
 typedef struct {
     // shape parameter, normalization factor
@@ -111,10 +106,11 @@ typedef struct {
 } filter_properties;
 
 typedef enum { 
-  OUTPUT_INTERMEDIATE = 0x01,
-  CALCULATE_WINDOW_FUNCTION = 0x02,
-  DONT_TRANSFER_TO_CPU = 0x04,
-  PRINT_TIMING = 0x08
+  NO_FLAGS = 0x01,
+  OUTPUT_INTERMEDIATE = 0x02,
+  CALCULATE_WINDOW_FUNCTION = 0x04,
+  DONT_TRANSFER_TO_CPU = 0x08,
+  PRINT_TIMING = 0x10
 } FLAGS;
 
 // Our internal PLAN datatype
@@ -150,5 +146,9 @@ typedef struct {
 } plan;
 
 // function to free plan memory
-void free_plan(plan *p);
+__host__ void free_plan(plan *p);
+
+// function to initialize plan
+__host__ void init_plan( plan *p, const dTyp *x, const dTyp *f,
+                         int Ndata, int Ngrid, unsigned int plan_flags);
 #endif

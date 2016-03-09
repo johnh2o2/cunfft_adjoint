@@ -1,32 +1,29 @@
 /*   utils.cu
  *   ========  
  *   
- *   
+ *   Misc. functions useful to the rest of the program 
  * 
  *   (c) John Hoffman 2016
  * 
- *   This file is part of cuNFFT_adjoint
+ *   This file is part of CUNA
  *
- *   cuNFFT_adjoint is free software: you can redistribute it and/or modify
+ *   CUNA is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   cuNFFT_adjoint is distributed in the hope that it will be useful,
+ *   CUNA is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with CUNA.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include "utils.h"
-#include "filter.h"
 #include <stdlib.h>
 
-#define rmax 1000000
-#define Random ((dTyp) (rand() % rmax))/rmax
+#include "cuna_utils.h"
+#include "cuna_filter.h"
 
 #ifdef DOUBLE_PRECISION
 
@@ -46,7 +43,17 @@ old = atomicCAS(address_as_ull, assumed,
 
 #endif
 
-__host__ unsigned int nextPowerOfTwo(unsigned int v) {
+__global__ void
+convertToComplex(dTyp *a, Complex *c, int N){
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N) {
+		c[i].x = a[i];
+		c[i].y = 0;
+    }
+}
+
+__host__ unsigned int 
+nextPowerOfTwo(unsigned int v) {
 	v--;
 	v |= v >> 1;
 	v |= v >> 2;
@@ -57,119 +64,37 @@ __host__ unsigned int nextPowerOfTwo(unsigned int v) {
 	return v;
 }
 
-__host__
-void
-meanAndVariance(int n, const dTyp *y, dTyp *mean , dTyp *variance) {
-  *mean = 0;
-  dTyp M2 = 0, delta;
-  
-  int nn = 1;
-  for(int i = 0; i < n; i++, nn++) {
-    delta = y[i] - *mean;
-    *mean += delta / nn;
-    M2 += delta * (y[i] - *mean);
-  }
-  *variance = M2/(n - 1);
-}
-__device__
-dTyp
-sign(dTyp a, dTyp b) {
-  	return ((b >= 0) ? 1 : -1) * absoluteValueReal(a);
-}
-
-__device__
-dTyp
-square(dTyp a) { 
-	return a * a; 
-}
-
-__global__ void dummyKernel() { 
+__global__ void 
+dummyKernel() { 
 	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 }
 
-__host__ void launchDummyKernel() {
+__host__ void 
+launchDummyKernel() {
 	dummyKernel<<<1, 1>>>();
 }
 
 
 // converts clock_t value into seconds
-dTyp seconds(clock_t dt) {
+__host__ dTyp 
+seconds(clock_t dt) {
 	return ((dTyp) dt) / ((dTyp)CLOCKS_PER_SEC);
-}
-
-// generates unequal timing array
-dTyp * generateRandomTimes(int N) {
-	dTyp *x = (dTyp *) malloc( N * sizeof(dTyp));
-	x[0] = 0.;
-	for (int i = 1; i < N; i++)
-		x[i] = x[i - 1] + Random;
-
-	dTyp xmax = x[N - 1];
-	for (int i = 0; i < N; i++)
-		x[i] = (x[i] / xmax) - 0.5;
-
-	return x;
-}
-
-// generates a periodic signal
-dTyp * generateSignal(dTyp *x, dTyp f, dTyp phi, int N) {
-	dTyp *signal = (dTyp *) malloc( N * sizeof(dTyp));
-
-	for (int i = 0; i < N; i++)
-		signal[i] = cos((x[i] + 0.5) * f * 2 * PI - phi) + Random;
-
-	return signal;
-}
-
-
-// checks if any nans are in the fft
-int countNans(Complex *fft, int N) {
-	int nans = 0;
-	for (int i = 0 ; i < N; i++)
-		if (isnan(fft[i].x) || isnan(fft[i].y))
-			nans++;
-	return nans;
-}
-
-
-
-// Copies over a float array to Complex array
-// TODO: Find a more efficient/sensible way to do this.
-void copy_real_to_complex(dTyp *a, Complex *b, int N){
-	for (int i = 0; i < N; i++){
-		b[i].x = a[i];
-		b[i].y = 0;
-	}
-}
-
-Complex * make_complex(dTyp *a, int N){
-	Complex *c = (Complex *)malloc(N * sizeof(Complex));
-	copy_real_to_complex(a, c, N);
-	return c;
 }
 
 void scale_x(dTyp *x, int size){
 	// ensures that x \in [-1/2, 1/2)
 
-	dTyp range = x[size-1] - x[0];
+	dTyp invrange = 1./(x[size-1] - x[0]);
 	for(int i = 0; i < size; i++){
 		x[i]-=x[0];
-		x[i]/=range;
+		x[i]*=invrange;
 		x[i]-=0.5;
 	}
 }
 
-__host__
-void 
-init_plan(
-	plan 			    *p, 
-	const dTyp 			*x, 
-	const dTyp 			*f, 
-	int 	            Ndata, 
-	int 	            Ngrid,
-	unsigned int        plan_flags
-   
-) {
+__host__ void 
+init_plan( plan *p, const dTyp *x, const dTyp *f, int Ndata, int Ngrid,
+           unsigned int plan_flags) {
 	LOG("in init_plan -- mallocing for CPU");
 	p->Ndata = Ndata;
 	p->Ngrid = Ngrid;
@@ -266,8 +191,7 @@ init_plan(
 	set_filter_properties(p);
 }
 
-__host__
-void
+__host__ void
 printComplex_d(Complex *a_d, int N, FILE* out){
 	Complex * cpu = (Complex *)malloc( N * sizeof(Complex));
 	checkCudaErrors(cudaMemcpy(cpu, a_d, N * sizeof(Complex), cudaMemcpyDeviceToHost ));
@@ -277,8 +201,7 @@ printComplex_d(Complex *a_d, int N, FILE* out){
         free(cpu);
 }
 
-__host__
-void
+__host__ void
 printReal_d(dTyp *a, int N, FILE *out){
 	dTyp * copy = (dTyp *) malloc(N * sizeof(dTyp));
         checkCudaErrors(cudaMemcpy(copy, a, N * sizeof(dTyp), cudaMemcpyDeviceToHost));
@@ -287,15 +210,13 @@ printReal_d(dTyp *a, int N, FILE *out){
 		fprintf(out, "%-5d %-10.3e\n", i, copy[i]);
         free(copy);
 }
-__host__
-void
+__host__ void
 printComplex(Complex *a, int N, FILE *out){
 	for(int i = 0;i < N; i++)
 		fprintf(out, "%-5d %-10.3e %-10.3e\n",  i, a[i].x, a[i].y);
 }
 
-__host__
-void
+__host__ void
 printReal(dTyp *a, int N, FILE *out){
 	for(int i = 0;i < N; i++)
 		fprintf(out, "%-5d %-10.3e\n",  i, a[i]);

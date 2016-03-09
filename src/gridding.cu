@@ -1,46 +1,38 @@
-/*   adjoint_kernel.cu
- *   =================   
+/*   gridding.cu
+ *   ===========   
  *   
- *   Contains filter-independent GPU operations for cuNFFT_adjoint 
+ *   Contains gridding subroutines for the adjoint operation 
  * 
  *   (c) John Hoffman 2016
  * 
- *   This file is part of cuNFFT_adjoint
+ *   This file is part of CUNA
  *
- *   cuNFFT_adjoint is free software: you can redistribute it and/or modify
+ *   CUNA is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   cuNFFT_adjoint is distributed in the hope that it will be useful,
+ *   CUNA is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with cuNFFT_adjoint.  If not, see <http://www.gnu.org/licenses/>.
+ *   along with CUNA.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <cuComplex.h>
 
+#include "cuna_typedefs.h"
+#include "cuna_gridding.h"
+#include "cuna_filter.h"
+#include "cuna_utils.h"
 
-#include "typedefs.h"
-#include "adjoint_kernel.h"
-#include "filter.h"
-#include "utils.h"
-
-
-__device__ 
-void 
-smooth_to_grid( 
-
-	dTyp 		*f_data, 
-	dTyp 		*f_grid, 			
-	const int 	i_data, 
-	const int 	i_grid, 
-	filter_properties 	*fprops,
-	const int  Ngrid
-){
+// smooths a given datapoint onto an evenly spaced grid
+__device__ void smooth_to_grid(dTyp *f_data, dTyp *f_grid, const int i_data, 
+                               const int i_grid, filter_properties *fprops,
+                               const int Ngrid )
+{
 
 	dTyp val, fval;
 	if (f_data == NULL)
@@ -62,17 +54,11 @@ smooth_to_grid(
 	}
 }
 
-__global__ 
-void 
-fast_gridding( 
-	dTyp 		*f_data, 
-	dTyp 		*f_grid, 
-	dTyp 		*x_data, 
-	const int 	Ngrid, 
-	const int 	Ndata, 
-	filter_properties 	*fprops
-){
-	
+// uses a filter to map unevenly spaced data onto an evenly spaced grid
+__global__ void fast_gridding( dTyp *f_data, dTyp *f_grid, dTyp *x_data, 
+                                const int Ngrid, const int Ndata, 
+                                filter_properties *fprops)
+{
 	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	
 	if (i < Ndata) {	
@@ -81,16 +67,3 @@ fast_gridding(
 	}
 }
 
-__global__ 
-void
-divide_by_spectral_window( 
-
-	Complex 		    *sig, 
-	const Complex 		*filt,
-	const int 	N
-){
-	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
-	if (i < N) 
-		sig[i] = cuComplexDivide(sig[i], filt[i]);
-	
-}
