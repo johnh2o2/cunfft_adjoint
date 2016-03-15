@@ -22,12 +22,9 @@
  */
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <memory.h>
 #include <math.h>
-#include <time.h>
 #include <complex.h>
-#include <cuda.h>
 
 #include "cuna.h"
 #include "cuna_typedefs.h"
@@ -48,4 +45,6 @@ void cunfft_adjoint(const dTyp *x, const dTyp *f, cTyp *fft, int n, int ng, unsi
 	free_plan(p);
 }
 
-
+filter_properties * get_filter_properties() {
+	return filt_props;
+}

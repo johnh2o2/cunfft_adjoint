@@ -126,10 +126,10 @@ init_plan( plan *p, const dTyp *x, const dTyp *f, int Ndata, int Ngrid,
 		cudaMalloc((void **) &(p->g_x_data), 
 			p->Ndata * sizeof(dTyp))
 	);
-    checkCudaErrors(
-            cudaMalloc((void **) &(p->g_f_grid),
-                    p->Ngrid * sizeof(dTyp))
-    );
+        checkCudaErrors(
+                cudaMalloc((void **) &(p->g_f_grid),
+                        p->Ngrid * sizeof(dTyp))
+        );
 	LOG("cudaMalloc -- p->g_f_hat");
 	checkCudaErrors(
 		cudaMalloc((void **) &(p->g_f_hat), 
@@ -146,27 +146,27 @@ init_plan( plan *p, const dTyp *x, const dTyp *f, int Ndata, int Ngrid,
 				p->Ngrid * sizeof(Complex))
 		);
 		checkCudaErrors(
-	        cudaMalloc((void **) &(p->g_f_grid_win),
-	            p->Ngrid * sizeof(dTyp))
-	    );
+	                cudaMalloc((void **) &(p->g_f_grid_win),
+	                        p->Ngrid * sizeof(dTyp))
+	        );
 
 		// set to zero
-	    checkCudaErrors(
+	        checkCudaErrors(
 			cudaMemset(p->g_f_hat_win, 0, p->Ngrid * sizeof(Complex))
 		);
 		checkCudaErrors(
-        	cudaMemset(p->g_f_grid_win, 0, p->Ngrid * sizeof(dTyp))
+        	        cudaMemset(p->g_f_grid_win, 0, p->Ngrid * sizeof(dTyp))
 		); 
 	}
 
 		
-    // set things to zero
+        // set things to zero
 	checkCudaErrors(
 		cudaMemset(p->g_f_hat, 0, p->Ngrid * sizeof(Complex))
 	);
 	
-    checkCudaErrors(
-        cudaMemset(p->g_f_grid, 0, p->Ngrid * sizeof(dTyp))
+        checkCudaErrors(
+                cudaMemset(p->g_f_grid, 0, p->Ngrid * sizeof(dTyp))
 	);
 
 	LOG("cudaMemcpy f_data_complex ==> p->g_f_data");

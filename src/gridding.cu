@@ -51,6 +51,7 @@ __device__ void smooth_to_grid(dTyp *f_data, dTyp *f_grid, const int i_data,
 	for (int m = mstart; m < mend;  m++) {
 		fval = val * filter(i_data, i_grid, m, fprops);
 		atomicAdd(&(f_grid[i_grid + m]), fval);
+		//f_grid[i_grid + m] += fval;
 	}
 }
 
@@ -63,6 +64,8 @@ __global__ void fast_gridding( dTyp *f_data, dTyp *f_grid, dTyp *x_data,
 	
 	if (i < Ndata) {	
 		int j = (int) ((x_data[i] + 0.5) * (Ngrid - 1));
+		if ( j < 0 ) j = 0;
+		else if (j >= Ngrid) j = Ngrid - 1;
 		smooth_to_grid(f_data, f_grid, i, j, fprops, Ngrid);
 	}
 }

@@ -16,16 +16,17 @@ CUDA_VERSION=7.5
 BLOCK_SIZE=256
 VERSION=1.0
 
-SRCDIR=./src
-HEADERDIR=./inc
-BUILDDIR=./build
-LIBDIR=./lib
-BINDIR=./bin
+SRCDIR=src
+HEADERDIR=inc
+BUILDDIR=build
+LIBDIR=lib
+BINDIR=bin
 
-OPTIMIZE=
+OPTIMIZE_CPU= -O3
+OPTIMIZE_GPU= -Xcompiler -O3 --use_fast_math
 DEFS := -DBLOCK_SIZE=$(BLOCK_SIZE) -DVERSION=\"$(VERSION)\"
-NVCCFLAGS := $(DEFS) -Xcompiler -fpic --ptxas-options=-v --gpu-architecture=compute_$(ARCH) --gpu-code=sm_$(ARCH),compute_$(ARCH) 
-CFLAGS := $(DEFS) -fPIC -Wall $(OPTIMIZE)
+NVCCFLAGS := $(DEFS) $(OPTIMIZE_GPU) -Xcompiler -fpic --gpu-architecture=compute_$(ARCH) --gpu-code=sm_$(ARCH),compute_$(ARCH) 
+CFLAGS := $(DEFS) -fPIC -Wall $(OPTIMIZE_CPU)
 
 CUDA_LIBS =`pkg-config --libs cudart-$(CUDA_VERSION)` 
 CUDA_LIBS+=`pkg-config --libs cufft-$(CUDA_VERSION)`
@@ -54,11 +55,16 @@ all : single double test-single test-double
 single : lib$(NAME)f.so
 double : lib$(NAME)d.so
 
+
 %f.so : $(CU_OBJ_FILES_SINGLE) $(CPP_OBJ_FILES_SINGLE) $(BUILDDIR)/dlink-single.o
-	$(CC) -shared -o $(LIBDIR)/$@ $^ $(LIBS)
+	$(CC) -shared -o $(LIBDIR)/$@ $^ $(LIBS)	
+	cd $(BINDIR); ln -s ../$(LIBDIR)/$@ $@
+	@echo "linked $(LIBDIR)/$@ to $(BINDIR)/$@" 
 
 %d.so : $(CU_OBJ_FILES_DOUBLE) $(CPP_OBJ_FILES_DOUBLE) $(BUILDDIR)/dlink-double.o
-	$(CC) -shared -o $(LIBDIR)/$@ $^ $(LIBS)
+	$(CC) -shared -o $(LIBDIR)/$@ $^ $(LIBS) 
+	cd $(BINDIR); ln -s ../$(LIBDIR)/$@ $@
+	@echo "linked $(LIBDIR)/$@ to $(BINDIR)/$@" 
 
 test-single :
 	$(CC) $(CFLAGS) $(INCLUDE) -o $(BINDIR)/$@ test.cpp -L$(LIBDIR) -lm -l$(NAME)f
@@ -83,6 +89,10 @@ $(CPP_OBJ_FILES_SINGLE) :
 
 $(CPP_OBJ_FILES_DOUBLE) : 
 	$(CC) $(CFLAGS) $(INCLUDE) -DDOUBLE_PRECISION -c $(SRCDIR)/$(notdir $(subst d.o,.cpp,$@)) -o $(BUILDDIR)/$(notdir $@)
+
+install : all 
+	cp $(LIBDIR)/* /usr/local/lib
+	cp $(HEADERDIR)/* /usr/local/include
 
 .PHONY : clean
 RM=rm -f

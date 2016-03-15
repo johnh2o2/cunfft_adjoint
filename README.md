@@ -14,8 +14,6 @@ by the filter's window function.
 ##Usage
 
 Simply `make` to produce the shared libraries and testing binaries.
-You'll need to either symlink/copy the shared libraries into the "bin"
-directory, or add the "lib" directory to your `LD_LIBRARY_PATH`.
 
 There will eventually be a `make install` and `make uninstall` option.
 

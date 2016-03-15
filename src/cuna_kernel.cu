@@ -39,13 +39,6 @@
 FILE *out;
 char fname[200];
 
-#ifdef DOUBLE_PRECISION
-#define CUFFT_EXEC_CALL cufftExecZ2Z
-#define CUFFT_TRANSFORM_TYPE CUFFT_Z2Z
-#else
-#define CUFFT_EXEC_CALL cufftExecC2C
-#define CUFFT_TRANSFORM_TYPE CUFFT_C2C
-#endif
 
 
 __host__ void 
@@ -116,8 +109,8 @@ performFFTs(plan *p) {
         cufftPlan1d( &cuplan, p->Ngrid, CUFFT_TRANSFORM_TYPE, 1)
     );
 
-    //LOG("synchronizing the device.");
-    //checkCudaErrors(cudaDeviceSynchronize());
+    LOG("synchronizing the device.");
+    checkCudaErrors(cudaDeviceSynchronize());
 
     LOG("doing FFT of gridded data.");
     // FFT(gridded data)
@@ -125,8 +118,8 @@ performFFTs(plan *p) {
         CUFFT_EXEC_CALL( cuplan, p->g_f_hat, p->g_f_hat, CUFFT_INVERSE )
     );
     
-    //LOG("synchronizing the device.");
-    //checkCudaErrors(cudaDeviceSynchronize());
+    LOG("synchronizing the device.");
+    checkCudaErrors(cudaDeviceSynchronize());
     
     if (p->flags & OUTPUT_INTERMEDIATE) { 
         LOG("outputting raw fft of gridded data.");
@@ -197,10 +190,10 @@ copyResultsToCPU(plan *p) {
 }
 
 #define timeCommand(command)\
-   if(p->flags | PRINT_TIMING) \
+   if(p->flags & PRINT_TIMING) \
        start=clock(); \
    command;\
-   if(p->flags | PRINT_TIMING) \
+   if(p->flags & PRINT_TIMING) \
        fprintf(stderr, "  NFFT_ADJOINT.CU: %-20s : %.4e(s)\n", #command, seconds(clock() - start))
 
 // computes the adjoint NFFT and stores this in plan->f_hat
@@ -211,7 +204,61 @@ cunfft_adjoint_from_plan(plan *p) {
     timeCommand(transferGridResults(p));
     timeCommand(performFFTs(p));
     timeCommand(normalizeResults(p));
-    if ( !(p->flags | DONT_TRANSFER_TO_CPU)){
+    if ( !(p->flags & DONT_TRANSFER_TO_CPU)){
        timeCommand(copyResultsToCPU(p));
     }
+}
+
+// x, f, f_grid, fft must all be GPU-allocated memory
+void cunfft_adjoint_raw(const dTyp *x, const dTyp *f, dTyp *f_grid, Complex *f_hat, 
+                        int n, int ng, unsigned int flags, 
+                        filter_properties *filt_props) {
+    int nblocks;
+
+    /////////////////////////////////////////////////////////////
+    // GRIDDING
+    
+    nblocks = n / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < n) nblocks++;
+
+    // unequally spaced data -> equally spaced grid
+    fast_gridding 
+    <<< nblocks, BLOCK_SIZE >>>
+    ( f, f_grid, x, ng, n, filt_props );
+
+    /////////////////////////////////////////////////////////////
+    // TRANSFER GRID RESULTS
+
+    nblocks = ng / BLOCK_SIZE;
+    while(nblocks * BLOCK_SIZE < ng) nblocks++; 
+
+    convertToComplex 
+    <<< nblocks, BLOCK_SIZE >>> 
+    (f_grid, f_hat, ng);
+
+    /////////////////////////////////////////////////////////////
+    // PERFORM FFTs
+    
+    // make plan
+    cufftHandle cuplan; 
+    checkCufftError(
+        cufftPlan1d( &cuplan, ng, CUFFT_TRANSFORM_TYPE, 1)
+    );
+
+    // FFT(gridded data)
+    checkCufftError(
+        CUFFT_EXEC_CALL( cuplan, f_hat, f_hat, CUFFT_INVERSE )
+    );
+
+    // destory plan
+    cufftDestroy(cuplan);
+
+    /////////////////////////////////////////////////////////////
+    // NORMALIZE
+
+    LOG("Normalizing");
+    // normalize (eq. 11 in Greengard & Lee 2004)
+    normalize 
+    <<< nblocks, BLOCK_SIZE >>> 
+    ( f_hat, ng, filt_props );
 }

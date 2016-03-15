@@ -82,7 +82,7 @@ set_filter_properties(plan *p){
 	//        tau = (1.0 / (p->Ndata * p->Ndata)) 
 	// 			* (PI / (R* (R - 0.5))) * p->filter_radius;
 	//tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
-    b = 2 * R / (2 * R - 1) * (p->filter_radius / PI);
+        b = 2 * R / (2 * R - 1) * (p->filter_radius / PI);
 
 	LOG("setting p->fprops_host->(filter_radius, tau)");
 	// set filter radius and shape parameter of (CPU) filter_properties
