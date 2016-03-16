@@ -267,22 +267,11 @@ void free_plan(plan *p){
 	LOG("free     p->f_data");
 	free(p->f_data);
 
-	LOG("cudaFree p->fprops_host->E(1,2,3)");
-	checkCudaErrors(cudaFree(p->fprops_host->E1));
-	checkCudaErrors(cudaFree(p->fprops_host->E2));
-	checkCudaErrors(cudaFree(p->fprops_host->E3));
-
-	LOG("free     p->fprops_host");
-	free(p->fprops_host);
-
-	LOG("cudaFree p->fprops_device");
-	checkCudaErrors(cudaFree(p->fprops_device));
+	LOG("free     p->(fprops_device, fprops_host)");
+	free_filter_properties(p->fprops_device, p->fprops_host);
 
 	LOG("cudaFree p->g_f_hat");
 	checkCudaErrors(cudaFree(p->g_f_hat));
-
-	//LOG("cudaFree p->g_f_filter");
-	//checkCudaErrors(cudaFree(p->g_f_filter));
 
 	LOG("cudaFree p->g_f_data");
 	checkCudaErrors(cudaFree(p->g_f_data));

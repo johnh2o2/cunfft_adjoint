@@ -35,6 +35,23 @@ __host__ void
 set_filter_properties( plan *p ); 
 
 /**
+ *
+ *
+ *
+ */
+__host__ void
+generate_filter_properties(const dTyp *x, int n, int ng, 
+	filter_propertes **fprops_host, filter_properties **fprops_device);
+
+/**
+ *
+ *
+ *
+ */
+__host__ void
+free_filter_properties(filter_properties *d_fp, filter_properties *fp);
+
+/**
  * 
  * 
  * 

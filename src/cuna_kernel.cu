@@ -215,3 +215,42 @@ cunfft_adjoint_from_plan(plan *p) {
        timeCommand(copyResultsToCPU(p));
     }
 }
+
+// x, f_data, f_grid, and f_hat should all be allocated on the GPU
+void
+cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid, 
+    Complex *f_hat, int n, int ng, filter_properties *gpu_fprops) {
+
+    int nblocks;
+
+    // set number of blocks & threads
+    nblocks = n / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < n) nblocks++;
+    
+    // unequally spaced data -> equally spaced grid
+    fast_gridding <<< nblocks, BLOCK_SIZE >>> 
+                            ( f_data, f_grid, x, ng, n, gpu_fprops );
+
+    
+    // resize nblocks
+    nblocks = ng / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < ng) nblocks++; 
+
+    // transfer results to complex grid
+    convertToComplex <<< nblocks, BLOCK_SIZE >>> ( f_grid, f_hat, ng );
+    
+    // make plan
+    cufftHandle cuplan; 
+    checkCufftError(cufftPlan1d( &cuplan, ng, CUFFT_TRANSFORM_TYPE, 1));
+
+    // FFT(gridded data)
+    checkCufftError(CUFFT_EXEC_CALL( cuplan, f_hat, f_hat, CUFFT_INVERSE ));
+
+    // destroy plan
+    cufftDestroy(cuplan);
+
+    // normalize (eq. 11 in Greengard & Lee 2004)
+    normalize <<< nblocks, BLOCK_SIZE >>>( f_hat, ng, gpu_fprops );
+
+}
+

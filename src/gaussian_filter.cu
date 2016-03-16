@@ -38,40 +38,33 @@ void
 set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid, 
 				const int Ndata );
 
+
 ///////////////////////////////////////////////////////////////////////////////
 // SET FILTER PROPERTIES + PRECOMPUTATIONS
 __host__
-void 
-set_filter_properties(plan *p){
-
+void
+generate_filter_properties(const dTyp *x, int n, int ng, filter_propertes **fprops_host, 
+		filter_properties **fprops_device) {
 	// Note: need two copies of the filter properties
 	//       so that we can free the (E1, E2, E3) pointers
 	//       because you can't do ([GPU]pointer)->(something)
 	//       
-	// [CPU]p { [CPU]fprops_host   { [GPU]E1, E2, E3, [CPU]b, normfac, filter_radius },
-	//          [GPU]fprops_device { [GPU] ^,  ^,  ^, [GPU]b, normfac, filter_radius }  
-	//       }
-
-
-	LOG("in set_filter_properties");
-	
+	// [CPU]fprops_host   { [GPU]E1, E2, E3, [CPU]b, normfac, filter_radius }
+	// [GPU]fprops_device { [GPU] ^,  ^,  ^, [GPU]b, normfac, filter_radius }  
+	//    
 	dTyp b, R;
 
-	// set plan filter radius
-	p->filter_radius = FILTER_RADIUS;
-
 	// nthreads = nblocks x BLOCK_SIZE
-	int nblocks = (p->Ndata + p->filter_radius) / BLOCK_SIZE;
+	int nblocks = (n + FILTER_RADIUS) / BLOCK_SIZE;
 
 	// make sure nthreads >= data size + filter radius
-	while (nblocks * BLOCK_SIZE < p->Ndata + p->filter_radius) nblocks++;
+	while (nblocks * BLOCK_SIZE < n + FILTER_RADIUS) nblocks++;
 
 	// allocate host filter_properties
-	LOG("malloc p->fprops_host");
-	p->fprops_host = (filter_properties *)malloc(sizeof(filter_properties));
+	*fprops_host = (filter_properties *)malloc(sizeof(filter_properties));
 
 	// R                :  is the oversampling factor
-	R = ((dTyp) p->Ngrid) / p->Ndata;
+	R = ((dTyp) ng) / n;
 
 	// tau              :  is the characteristic length scale for the filter 
 	//                     (not to be confused with the filter_radius)
@@ -82,68 +75,70 @@ set_filter_properties(plan *p){
 	//        tau = (1.0 / (p->Ndata * p->Ndata)) 
 	// 			* (PI / (R* (R - 0.5))) * p->filter_radius;
 	//tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
-    b = 2 * R / (2 * R - 1) * (p->filter_radius / PI);
+    b = 2 * R / (2 * R - 1) * (FILTER_RADIUS / PI);
 
-	LOG("setting p->fprops_host->(filter_radius, tau)");
 	// set filter radius and shape parameter of (CPU) filter_properties
-	p->fprops_host->b = b;
-	p->fprops_host->normfac = sqrt(2 * PI); // * p->Ngrid;
-	p->fprops_host->filter_radius = p->filter_radius;
+	(*fprops_host)->b             = b;
+	(*fprops_host)->normfac       = sqrt(2 * PI); 
+	(*fprops_host)->filter_radius = FILTER_RADIUS;
 
 	
-	LOG("cuda malloc p->fprops_device");
 	// allocate (GPU) filter properties
 	checkCudaErrors(
-		cudaMalloc(
-			(void **) &(p->fprops_device), 
-			sizeof(filter_properties)
-			)
-		);
+		cudaMalloc((void **) fprops_device, sizeof(filter_properties))		
+	);
 
-	
-	LOG("cudaMalloc p->fprops_host->E(1,2,3)");
 	// allocate GPU memory for E1, E2, E3 of CPU filter_properties
 	checkCudaErrors(
-		cudaMalloc(
-			(void **) &(p->fprops_host->E1), 
-			p->Ndata * sizeof(dTyp)
-			)
-		);
+		cudaMalloc((void **) &((*fprops_host)->E1), n * sizeof(dTyp))		
+	);
 	checkCudaErrors(
-		cudaMalloc(
-			(void **) &(p->fprops_host->E2), 
-			p->Ndata * sizeof(dTyp)
-			)
-		);
+		cudaMalloc((void **) &((*fprops_host)->E2), n * sizeof(dTyp))		
+	);
 	checkCudaErrors(
-		cudaMalloc(
-			(void **) &(p->fprops_host->E3), 
-			p->filter_radius * sizeof(dTyp)
-			)
-		);
+		cudaMalloc((void **) &((*fprops_host)->E3), FILTER_RADIUS * sizeof(dTyp))		
+	);
 
-	LOG("cudaMemcpy p->fprops_host ==> p->fprops_device");
 	// Copy filter properties to device
 	checkCudaErrors(
-		cudaMemcpy(
-			p->fprops_device, 
-			p->fprops_host, 
-			sizeof(filter_properties), 
-			cudaMemcpyHostToDevice 
-			)
-		);
+		cudaMemcpy(*fprops_device, *fprops_host, sizeof(filter_properties), 
+						cudaMemcpyHostToDevice )
+	);
 
-	LOG("calling setting_gpu_filter_properties");
 	// Precompute E1, E2, E3 on GPU
-	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>> (p->fprops_device, 
-						p->g_x_data, p->Ngrid, p->Ndata);
+	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE>>>(*fprops_device, x, ng, n);
 	
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
-	
-
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// SET UP FILTER FOR PLAN
+__host__
+void 
+set_filter_properties(plan *p){
+	LOG("in set_filter_properties");	
+
+	dTyp b, R;
+
+	// set plan filter radius
+	p->filter_radius = FILTER_RADIUS;
+	generate_filter_properties(p->g_x_data, p->Ndata, p->Ngrid, 
+								&(p->fprops_host), &(p->fprops_device))
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// FREE GPU/CPU FILTER_PROPERTIES
+__host__ void
+free_filter_properties(filter_properties *d_fp, filter_properties *fp) {
+	checkCudaErrors(cudaFree(fp->E1));
+	checkCudaErrors(cudaFree(fp->E2));
+	checkCudaErrors(cudaFree(fp->E3));
+
+	checkCudaErrors(cudaFree(d_fp));
+	free(fp);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////

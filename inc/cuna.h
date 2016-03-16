@@ -39,4 +39,12 @@ void cunfft_adjoint(const dTyp *x, const dTyp *f, cTyp *fft, int n,
  * 
  */
 void cunfft_adjoint_from_plan( plan *p );
+
+/**
+ *
+ *
+ *
+ */
+void cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid, 
+    Complex *f_hat, int n, int ng, filter_properties *gpu_fprops);
 #endif
