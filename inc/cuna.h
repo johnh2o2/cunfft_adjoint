@@ -25,6 +25,15 @@
 #define CUNA_H
 #include <complex.h>
 #include "cuna_typedefs.h"
+
+#ifdef DOUBLE_PRECISION
+#define CUFFT_EXEC_CALL cufftExecZ2Z
+#define CUFFT_TRANSFORM_TYPE CUFFT_Z2Z
+#else
+#define CUFFT_EXEC_CALL cufftExecC2C
+#define CUFFT_TRANSFORM_TYPE CUFFT_C2C
+#endif
+
 /**
  * 
  * 

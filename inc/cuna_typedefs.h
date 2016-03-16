@@ -63,7 +63,8 @@
 // Error printing
 #define eprint(...) \
     fprintf(stderr, "[%-10s] %-30s L[%-5d]: ", "ERROR", __FILE__, __LINE__);\
-    fprintf(stderr, __VA_ARGS__)
+    fprintf(stderr, __VA_ARGS__);\
+    exit(EXIT_FAILURE)
 
 // DEBUG flag turns on the "log" messages to DEBUGSTREAM (default is stderr)
 #ifdef DEBUG

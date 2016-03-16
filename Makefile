@@ -91,8 +91,8 @@ $(CPP_OBJ_FILES_DOUBLE) :
 	$(CC) $(CFLAGS) $(INCLUDE) -DDOUBLE_PRECISION -c $(SRCDIR)/$(notdir $(subst d.o,.cpp,$@)) -o $(BUILDDIR)/$(notdir $@)
 
 install : all 
-	cp $(LIBDIR)/* /usr/local/lib
-	cp $(HEADERDIR)/* /usr/local/include
+	sudo cp $(LIBDIR)/* /usr/local/lib
+	sudo cp $(HEADERDIR)/* /usr/local/include
 
 .PHONY : clean
 RM=rm -f

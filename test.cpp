@@ -59,7 +59,6 @@ generateSignal(dTyp *x, dTyp f, dTyp phi, int N) {
 	return signal;
 }
 
-
 // checks if any nans are in the fft
 int countNans(Complex *fft, int N) {
 	int nans = 0;

@@ -15,7 +15,8 @@ by the filter's window function.
 
 Simply `make` to produce the shared libraries and testing binaries.
 
-There will eventually be a `make install` and `make uninstall` option.
+To install the program (to `/usr/local/(include, lib)`), do
+`make install`, though you'll probably need to do `sudo make install`.
 
 Two libraries are produced: `libcunaf.so` and `libcunad.so`; these 
 are identical libraries except `libcunaf.so` uses **single** precision
