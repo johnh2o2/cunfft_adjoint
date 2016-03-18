@@ -39,7 +39,7 @@ __host__ unsigned int nextPowerOfTwo(unsigned int v);
 __host__ dTyp seconds(clock_t dt);
 
 // converts real array to complex
-__global__ void convertToComplex(dTyp *a, Complex *c, int N);
+__global__ void convertToComplex(const dTyp *a, Complex *c, const int N);
 
 // Rescale X to [-1/2, 1/2)
 __host__   void scale_x(dTyp *x, int size);

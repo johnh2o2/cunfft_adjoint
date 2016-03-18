@@ -22,9 +22,13 @@ BUILDDIR=./build
 LIBDIR=./lib
 BINDIR=./bin
 
-OPTIMIZE=
+CPU_OPTIMIZE=-O3
+GPU_OPTIMIZE=--use_fast_math -Xcompiler -O3
+#CPU_OPTIMIZE=
+#GPU_OPTIMIZE=
+
 DEFS := -DBLOCK_SIZE=$(BLOCK_SIZE) -DVERSION=\"$(VERSION)\"
-NVCCFLAGS := $(DEFS) -Xcompiler -fpic --ptxas-options=-v --gpu-architecture=compute_$(ARCH) --gpu-code=sm_$(ARCH),compute_$(ARCH) 
+NVCCFLAGS := $(DEFS) $(GPU_OPTIMIZE) -Xcompiler -fpic --ptxas-options=-v --gpu-architecture=compute_$(ARCH) --gpu-code=sm_$(ARCH),compute_$(ARCH) 
 CFLAGS := $(DEFS) -fPIC -Wall $(OPTIMIZE)
 
 CUDA_LIBS =`pkg-config --libs cudart-$(CUDA_VERSION)` 
@@ -50,6 +54,9 @@ CU_OBJ_FILES_DOUBLE := $(CU_FILES:%.cu=$(BUILDDIR)/%d.o)
 INCLUDE := $(CUDA_INCLUDE) -I$(HEADERDIR)
 
 all : single double test-single test-double
+install : all
+	sudo cp $(LIBDIR)/* /usr/local/lib
+	sudo cp $(HEADERDIR)/* /usr/local/include
 
 single : lib$(NAME)f.so
 double : lib$(NAME)d.so

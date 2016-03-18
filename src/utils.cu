@@ -44,7 +44,7 @@ old = atomicCAS(address_as_ull, assumed,
 #endif
 
 __global__ void
-convertToComplex(dTyp *a, Complex *c, int N){
+convertToComplex(const dTyp *a, Complex *c, const int N){
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i < N) {
 		c[i].x = a[i];

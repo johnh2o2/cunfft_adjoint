@@ -219,7 +219,7 @@ cunfft_adjoint_from_plan(plan *p) {
 // x, f_data, f_grid, and f_hat should all be allocated on the GPU
 void
 cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid, 
-    Complex *f_hat, int n, int ng, filter_properties *gpu_fprops) {
+    Complex *f_hat, const int n, const int ng, const filter_properties *gpu_fprops) {
 
     int nblocks;
 

@@ -30,15 +30,15 @@
  *
  */
 __device__ void 
-smooth_to_grid(dTyp *f_data, dTyp *f_grid, const int j, const int i, 
-               filter_properties *fprops, const int Ngrid);
+smooth_to_grid(const dTyp *f_data, dTyp *f_grid, const int j, const int i, 
+               const filter_properties *fprops, const int Ngrid);
 
 /**
  *
  *
  */
 __global__ void 
-fast_gridding( dTyp *f_data, dTyp *f_grid, dTyp *x_data, const int Ngrid, 
-               const int Ndata, filter_properties *fprops );
+fast_gridding( const dTyp *f_data, dTyp *f_grid, const dTyp *x_data, const int Ngrid, 
+               const int Ndata, const filter_properties *fprops );
 
 #endif

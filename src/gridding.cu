@@ -29,8 +29,8 @@
 #include "cuna_utils.h"
 
 // smooths a given datapoint onto an evenly spaced grid
-__device__ void smooth_to_grid(dTyp *f_data, dTyp *f_grid, const int i_data, 
-                               const int i_grid, filter_properties *fprops,
+__device__ void smooth_to_grid(const dTyp *f_data, dTyp *f_grid, const int i_data, 
+                               const int i_grid, const filter_properties *fprops,
                                const int Ngrid )
 {
 
@@ -55,9 +55,9 @@ __device__ void smooth_to_grid(dTyp *f_data, dTyp *f_grid, const int i_data,
 }
 
 // uses a filter to map unevenly spaced data onto an evenly spaced grid
-__global__ void fast_gridding( dTyp *f_data, dTyp *f_grid, dTyp *x_data, 
+__global__ void fast_gridding( const dTyp *f_data, dTyp *f_grid, const dTyp *x_data, 
                                 const int Ngrid, const int Ndata, 
-                                filter_properties *fprops)
+                                const filter_properties *fprops)
 {
 	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	

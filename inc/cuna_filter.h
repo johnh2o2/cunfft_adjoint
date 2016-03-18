@@ -40,8 +40,8 @@ set_filter_properties( plan *p );
  *
  */
 __host__ void
-generate_filter_properties(const dTyp *x, int n, int ng, 
-	filter_propertes **fprops_host, filter_properties **fprops_device);
+generate_filter_properties(const dTyp *x, const int n, const int ng, 
+	filter_properties **fprops_host, filter_properties **fprops_device);
 
 /**
  *
@@ -57,7 +57,7 @@ free_filter_properties(filter_properties *d_fp, filter_properties *fp);
  * 
  */
 __device__ dTyp 
-filter( const int j_data, const int i_grid, const int m, filter_properties *f);
+filter( const int j_data, const int i_grid, const int m, const filter_properties *f);
 
 /**
  * 
@@ -65,6 +65,6 @@ filter( const int j_data, const int i_grid, const int m, filter_properties *f);
  * 
  */
 __global__ void 
-normalize( Complex *f_hat, int Ngrid, filter_properties *f );
+normalize( Complex *f_hat, const int Ngrid, const filter_properties *f );
 
 #endif

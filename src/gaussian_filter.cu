@@ -35,7 +35,7 @@
 
 __global__
 void
-set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid, 
+set_gpu_filter_properties( filter_properties *f, const dTyp *x, const int Ngrid, 
 				const int Ndata );
 
 
@@ -43,7 +43,7 @@ set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid,
 // SET FILTER PROPERTIES + PRECOMPUTATIONS
 __host__
 void
-generate_filter_properties(const dTyp *x, int n, int ng, filter_propertes **fprops_host, 
+generate_filter_properties(const dTyp *x, int n, int ng, filter_properties **fprops_host, 
 		filter_properties **fprops_device) {
 	// Note: need two copies of the filter properties
 	//       so that we can free the (E1, E2, E3) pointers
@@ -66,16 +66,9 @@ generate_filter_properties(const dTyp *x, int n, int ng, filter_propertes **fpro
 	// R                :  is the oversampling factor
 	R = ((dTyp) ng) / n;
 
-	// tau              :  is the characteristic length scale for the filter 
+	// b                :  is the characteristic length scale for the filter 
 	//                     (not to be confused with the filter_radius)
-	// NOTES:
-	//     below was the expression I found in Greengard & Lee 2003; I think 
-	//     they must have had a typo, since this tau is much too small.
-	//
-	//        tau = (1.0 / (p->Ndata * p->Ndata)) 
-	// 			* (PI / (R* (R - 0.5))) * p->filter_radius;
-	//tau = ((2 * R - 1)/ (2 * R)) * (PI / p->Ndata);
-    b = 2 * R / (2 * R - 1) * (FILTER_RADIUS / PI);
+        b = 2 * R / (2 * R - 1) * (FILTER_RADIUS / PI);
 
 	// set filter radius and shape parameter of (CPU) filter_properties
 	(*fprops_host)->b             = b;
@@ -119,12 +112,10 @@ void
 set_filter_properties(plan *p){
 	LOG("in set_filter_properties");	
 
-	dTyp b, R;
-
 	// set plan filter radius
 	p->filter_radius = FILTER_RADIUS;
 	generate_filter_properties(p->g_x_data, p->Ndata, p->Ngrid, 
-								&(p->fprops_host), &(p->fprops_device))
+								&(p->fprops_host), &(p->fprops_device));
 }
 
 
@@ -145,7 +136,7 @@ free_filter_properties(filter_properties *d_fp, filter_properties *fp) {
 // Precomputation for filter (done on GPU)
 __global__
 void
-set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid, 
+set_gpu_filter_properties( filter_properties *f, const dTyp *x, const int Ngrid, 
 				const int Ndata ){
 	// index
 	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
@@ -173,7 +164,7 @@ set_gpu_filter_properties( filter_properties *f, dTyp *x, const int Ngrid,
 __device__
 dTyp
 filter( const int j_data, const int i_grid, 
-				const int m , filter_properties *f){
+				const int m , const filter_properties *f){
 	
 	int mp;
 	if (m < 0) mp = -m;
@@ -186,7 +177,7 @@ filter( const int j_data, const int i_grid,
 
 __global__
 void
-normalize(Complex *f_hat, int Ngrid, filter_properties *f){
+normalize(Complex *f_hat, const int Ngrid, const filter_properties *f){
 
 	int k = blockIdx.x * BLOCK_SIZE + threadIdx.x;
 	if ( k < Ngrid ){
