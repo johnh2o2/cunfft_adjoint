@@ -55,51 +55,18 @@ performGridding(plan *p) {
     nblocks = p->Ndata / BLOCK_SIZE;
     while (nblocks * BLOCK_SIZE < p->Ndata) nblocks++;
     
-    LOG("about to do fast_gridding");
     // unequally spaced data -> equally spaced grid
     fast_gridding <<< nblocks, BLOCK_SIZE >>>
-          ( p->g_f_data, p->g_f_grid, p->g_x_data, p->Ngrid,
+          ( p->g_f_data, p->g_f_hat, p->g_x_data, p->Ngrid,
             p->Ndata, p->fprops_device );
 
     if(p->flags & CALCULATE_WINDOW_FUNCTION) {
-        LOG("about to do fast_gridding (WINDOW)");
         // unequally spaced data -> equally spaced grid
         fast_gridding <<< nblocks, BLOCK_SIZE >>>
-              ( NULL, p->g_f_grid_win, p->g_x_data,
+              ( NULL, p->g_f_hat_win, p->g_x_data,
                 p->Ngrid, p->Ndata, p->fprops_device );
     }
 
-    // prints gridded data + window (if asked)
-    if (p->flags & OUTPUT_INTERMEDIATE) {
-        LOG("writing gridded_data");
-        out = fopen("gridded_data.dat", "w");
-        printReal_d(p->g_f_grid, p->Ngrid, out);
-        fclose(out);
-        if (p->flags & CALCULATE_WINDOW_FUNCTION) {
-            LOG("writing gridded_data (WINDOW)");
-            out = fopen("gridded_data_window.dat", "w");
-            printReal_d(p->g_f_grid_win, p->Ngrid, out);
-            fclose(out);
-        }
-    }
-}
-
-__host__ void 
-transferGridResults(plan *p) {
-
-    int nblocks;
-    nblocks = p->Ngrid / BLOCK_SIZE;
-    while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++; 
-
-    LOG("converting g_f_grid to (Complex) g_f_hat");
-    convertToComplex <<< nblocks, BLOCK_SIZE >>>
-                   (p->g_f_grid, p->g_f_hat, p->Ngrid);
-
-    if (p->flags & CALCULATE_WINDOW_FUNCTION) { 
-        LOG("converting g_f_grid_win to (Complex) g_f_hat_win (WINDOW)");
-        convertToComplex <<< nblocks, BLOCK_SIZE >>>
-                   (p->g_f_grid_win, p->g_f_hat_win, p->Ngrid);
-    }
 }
 
 __host__ void 
@@ -108,51 +75,26 @@ performFFTs(plan *p) {
     nblocks = p->Ngrid / BLOCK_SIZE;
     while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++; 
 
-    LOG("calling cufftPlan1d");
-    
     // make plan
     cufftHandle cuplan; 
     checkCufftError(
         cufftPlan1d( &cuplan, p->Ngrid, CUFFT_TRANSFORM_TYPE, 1)
     );
 
-    //LOG("synchronizing the device.");
-    //checkCudaErrors(cudaDeviceSynchronize());
-
-    LOG("doing FFT of gridded data.");
     // FFT(gridded data)
     checkCufftError(
         CUFFT_EXEC_CALL( cuplan, p->g_f_hat, p->g_f_hat, CUFFT_INVERSE )
     );
     
-    //LOG("synchronizing the device.");
-    //checkCudaErrors(cudaDeviceSynchronize());
     
-    if (p->flags & OUTPUT_INTERMEDIATE) { 
-        LOG("outputting raw fft of gridded data.");
-        out = fopen("FFT_raw_f_hat.dat", "w");
-        printComplex_d(p->g_f_hat, p->Ngrid, out);
-        fclose(out);
-    }
-
     if (p->flags & CALCULATE_WINDOW_FUNCTION) {
         
-        LOG("doing FFT of gridded data. (WINDOW)");
         // FFT(gridded data)
         checkCufftError(
             CUFFT_EXEC_CALL( cuplan, p->g_f_hat_win,p->g_f_hat_win,
                              CUFFT_INVERSE)
         );
-
-        if (p->flags & OUTPUT_INTERMEDIATE) { 
-            LOG("outputting raw fft of gridded data. (WINDOW)");
-            out = fopen("FFT_raw_f_hat_win.dat", "w");
-            printComplex_d(p->g_f_hat_win, p->Ngrid, out);
-            fclose(out);
-        }
-
     }
-    LOG("destroying cufft plan");
     cufftDestroy(cuplan);
 }
 
@@ -162,13 +104,11 @@ normalizeResults(plan *p) {
     nblocks = p->Ngrid / BLOCK_SIZE;
     while(nblocks * BLOCK_SIZE < p->Ngrid) nblocks++; 
 
-    LOG("Normalizing");
     // normalize (eq. 11 in Greengard & Lee 2004)
     normalize <<< nblocks, BLOCK_SIZE >>>
           ( p->g_f_hat, p->Ngrid, p->fprops_device );
 
     if(p->flags & CALCULATE_WINDOW_FUNCTION) {
-        LOG("Normalizing (WINDOW)");
         // normalize (eq. 11 in Greengard & Lee 2004)
         normalize <<< nblocks, BLOCK_SIZE >>>
               ( p->g_f_hat_win, p->Ngrid, p->fprops_device );
@@ -178,16 +118,12 @@ normalizeResults(plan *p) {
 
 __host__ void 
 copyResultsToCPU(plan *p) {
-    LOG("Transferring data back to device");
-    
     // Transfer back to device!
     checkCudaErrors(
         cudaMemcpy( p->f_hat, p->g_f_hat, p->Ngrid * sizeof(Complex),
                     cudaMemcpyDeviceToHost )
     );
     if(p->flags & CALCULATE_WINDOW_FUNCTION) {
-        LOG("Transferring data back to device (WINDOW)");
-    
         // Transfer back to device!
         checkCudaErrors(
             cudaMemcpy( p->f_hat_win, p->g_f_hat_win,
@@ -196,30 +132,21 @@ copyResultsToCPU(plan *p) {
     }
 }
 
-#define timeCommand(command)\
-   if(p->flags | PRINT_TIMING) \
-       start=clock(); \
-   command;\
-   if(p->flags | PRINT_TIMING) \
-       fprintf(stderr, "  NFFT_ADJOINT.CU: %-20s : %.4e(s)\n", #command, seconds(clock() - start))
-
 // computes the adjoint NFFT and stores this in plan->f_hat
 __host__ void 
 cunfft_adjoint_from_plan(plan *p) {
-    clock_t start;
-    timeCommand(performGridding(p));
-    timeCommand(transferGridResults(p));
-    timeCommand(performFFTs(p));
-    timeCommand(normalizeResults(p));
+    performGridding(p);
+    performFFTs(p);
+    normalizeResults(p);
     if ( !(p->flags | DONT_TRANSFER_TO_CPU)){
-       timeCommand(copyResultsToCPU(p));
+       copyResultsToCPU(p);
     }
 }
 
 // x, f_data, f_grid, and f_hat should all be allocated on the GPU
 void
-cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid, 
-    Complex *f_hat, const int n, const int ng, const filter_properties *gpu_fprops) {
+cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, Complex *f_hat, 
+		const int n, const int ng, const filter_properties *gpu_fprops) {
 
     int nblocks;
 
@@ -229,16 +156,13 @@ cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid,
     
     // unequally spaced data -> equally spaced grid
     fast_gridding <<< nblocks, BLOCK_SIZE >>> 
-                            ( f_data, f_grid, x, ng, n, gpu_fprops );
+                            ( f_data, f_hat, x, ng, n, gpu_fprops );
 
     
     // resize nblocks
     nblocks = ng / BLOCK_SIZE;
     while (nblocks * BLOCK_SIZE < ng) nblocks++; 
 
-    // transfer results to complex grid
-    convertToComplex <<< nblocks, BLOCK_SIZE >>> ( f_grid, f_hat, ng );
-    
     // make plan
     cufftHandle cuplan; 
     checkCufftError(cufftPlan1d( &cuplan, ng, CUFFT_TRANSFORM_TYPE, 1));
@@ -246,6 +170,9 @@ cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid,
     // FFT(gridded data)
     checkCufftError(CUFFT_EXEC_CALL( cuplan, f_hat, f_hat, CUFFT_INVERSE ));
 
+    // wait for process to finish
+    checkCudaErrors(cudaThreadSynchronize());
+  
     // destroy plan
     cufftDestroy(cuplan);
 
@@ -253,4 +180,120 @@ cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid,
     normalize <<< nblocks, BLOCK_SIZE >>>( f_hat, ng, gpu_fprops );
 
 }
+
+// ASYNCHRONOUS version of cunfft_adjoint_raw
+// x, f_data, f_grid, and f_hat should all be allocated with cudaMalloc or cudaHostMalloc
+void
+cunfft_adjoint_raw_async(const dTyp *x, const dTyp *f_data, Complex *f_hat, 
+	const int n, const int ng, const filter_properties *gpu_fprops, 
+   	cudaStream_t stream) {
+
+    int nblocks;
+
+    // set number of blocks & threads
+    nblocks = n / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < n) nblocks++;
+
+    // unequally spaced data -> equally spaced grid
+    fast_gridding <<< nblocks, BLOCK_SIZE, 0, stream >>>
+                            ( f_data, f_hat, x, ng, n, gpu_fprops );
+
+    // SYNCHRONIZE
+    checkCudaErrors(cudaStreamSynchronize(stream));
+
+    // make plan
+    cufftHandle cuplan;
+    checkCufftError(cufftPlan1d( &cuplan, ng, CUFFT_TRANSFORM_TYPE, 1));
+
+    // set the CUDA stream
+    checkCufftError(cufftSetStream(cuplan, stream));
+
+    // FFT(gridded data)
+    checkCufftError(CUFFT_EXEC_CALL( cuplan, f_hat, f_hat, CUFFT_INVERSE ));
+
+    // SYNCHRONIZE
+    checkCudaErrors(cudaStreamSynchronize(stream));
+    
+    // destroy plan
+    cufftDestroy(cuplan);
+
+    // set number of blocks & threads
+    nblocks = ng / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < ng) nblocks++;
+
+    // normalize (eq. 11 in Greengard & Lee 2004)
+    normalize <<< nblocks, BLOCK_SIZE, 0, stream >>>( f_hat, ng, gpu_fprops );
+
+    // SYNCHRONIZE
+    checkCudaErrors(cudaStreamSynchronize(stream));
+}
+
+__host__
+int
+get_max(int *x, int n) {
+    int m = x[0];
+    for(int i = 0; i < n; i++) 
+        if (x[i] > m)
+	    m = x[i];
+
+    return m;
+}
+/*
+// ASYNCHRONOUS, BATCHED version of cunfft_adjoint_raw
+// x, f_data, f_grid, and f_hat should all be allocated with cudaMalloc
+// f_hat should be allocated to be max(ng) * nlc * sizeof(Complex)
+// 
+void
+cunfft_adjoint_raw_batched_async(const dTyp *x, const dTyp *f_data, Complex *f_hat, 
+	const int *n, const int *ng, const int nlc, const filter_properties **gpu_fprops, 
+   	cudaStream_t stream) {
+
+    // find max(ng)
+    int idist = ng[0], nobs_tot = 0, ng_tot=0, nblocks;
+    for(int i = 0; i < nlc; i++) {
+	    if (ng[i] > idist) idist = ng[i];
+        nobs_tot +=  n[i];
+        ng_tot   += ng[i];
+    }
+
+    // set number of blocks & threads
+    nblocks = nobs_tot / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < nobs_tot) nblocks++;
+
+    // unequally spaced data -> equally spaced grid
+    fast_gridding_batched <<< nblocks, BLOCK_SIZE, 0, stream >>>
+                            ( f_data, f_hat, x, ng, n, nlc, idist, gpu_fprops );
+    
+    // SYNCHRONIZE
+    checkCudaErrors(cudaStreamSynchronize(stream));
+
+    // make batched plan
+    cufftHandle cuplan; 
+    int dims[1] = { idist };
+    checkCufftError(cufftPlanMany( &cuplan, 1, dims, NULL, 1, idist, NULL, 1, CUFFT_TRANSFORM_TYPE, nlc));
+
+    // set the CUDA stream
+    checkCufftError(cufftSetStream(cuplan, stream));
+
+    // FFT(gridded data)
+    checkCufftError(CUFFT_EXEC_CALL( cuplan, f_hat, f_hat, CUFFT_INVERSE ));
+
+    // SYNCHRONIZE
+    checkCudaErrors(cudaStreamSynchronize(stream));
+    
+    // destroy plan
+    cufftDestroy(cuplan);
+
+    // set number of blocks & threads
+    nblocks = ng_tot / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < ng_tot) nblocks++;
+
+    // normalize (eq. 11 in Greengard & Lee 2004)
+    normalize_batch <<< nblocks, BLOCK_SIZE, 0, stream >>>( f_hat, ng, nlc, idist, gpu_fprops );
+
+    // SYNCHRONIZE
+    checkCudaErrors(cudaStreamSynchronize(stream));
+}
+*/
+
 

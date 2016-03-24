@@ -44,6 +44,7 @@
   #define cuImag cuCimag
   #define cuAbs  cuCabs
   #define cuSqrt sqrt
+  #define cuExp  exp
   #define absoluteValueReal fabs
 #else
   #define dTyp float
@@ -54,6 +55,7 @@
   #define cuImag cuCimagf
   #define cuAbs  cuCabsf
   #define cuSqrt sqrtf
+  #define cuExp  expf
   #define absoluteValueReal fabsf
 #endif
 
@@ -121,7 +123,7 @@ typedef struct {
 
     // GPU variables
     Complex *g_f_hat, *g_f_hat_win;
-    dTyp *g_x_data, *g_f_data, *g_f_grid, *g_f_grid_win;
+    dTyp *g_x_data, *g_f_data;
  
     // optional directions
     unsigned int flags;

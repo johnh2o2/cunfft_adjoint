@@ -1,4 +1,5 @@
-#CUDA implementation of the NFFT adjoint operation
+#CUNA v1.2
+##CUDA implementation of the NFFT adjoint operation
 
 ####(c) John Hoffman, 2016
 ####jah5@princeton.edu
@@ -14,10 +15,9 @@ by the filter's window function.
 ##Usage
 
 Simply `make` to produce the shared libraries and testing binaries.
-You'll need to either symlink/copy the shared libraries into the "bin"
-directory, or add the "lib" directory to your `LD_LIBRARY_PATH`.
 
-There will eventually be a `make install` and `make uninstall` option.
+Alternatively, you may run `make install` to move the libraries to
+`/usr/local/lib` and headers to `/usr/local/include`.
 
 Two libraries are produced: `libcunaf.so` and `libcunad.so`; these 
 are identical libraries except `libcunaf.so` uses **single** precision
@@ -30,11 +30,6 @@ command line arguments:
 `./test-single`
 
 ##TODO
-
-* **Batched operations** -- if you have several transforms that you would
-  like to do, it is far faster to perform them simultaneously on the GPU
-  (depending on the kind of GPU you might have) to utilize all of the
-  computational power.
 
 * **More documentation** 
 

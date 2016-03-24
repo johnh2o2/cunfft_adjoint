@@ -126,10 +126,6 @@ init_plan( plan *p, const dTyp *x, const dTyp *f, int Ndata, int Ngrid,
 		cudaMalloc((void **) &(p->g_x_data), 
 			p->Ndata * sizeof(dTyp))
 	);
-    checkCudaErrors(
-            cudaMalloc((void **) &(p->g_f_grid),
-                    p->Ngrid * sizeof(dTyp))
-    );
 	LOG("cudaMalloc -- p->g_f_hat");
 	checkCudaErrors(
 		cudaMalloc((void **) &(p->g_f_hat), 
@@ -145,18 +141,11 @@ init_plan( plan *p, const dTyp *x, const dTyp *f, int Ndata, int Ngrid,
 			cudaMalloc((void **) &(p->g_f_hat_win), 
 				p->Ngrid * sizeof(Complex))
 		);
-		checkCudaErrors(
-	        cudaMalloc((void **) &(p->g_f_grid_win),
-	            p->Ngrid * sizeof(dTyp))
-	    );
 
 		// set to zero
 	    checkCudaErrors(
 			cudaMemset(p->g_f_hat_win, 0, p->Ngrid * sizeof(Complex))
 		);
-		checkCudaErrors(
-        	cudaMemset(p->g_f_grid_win, 0, p->Ngrid * sizeof(dTyp))
-		); 
 	}
 
 		
@@ -165,9 +154,6 @@ init_plan( plan *p, const dTyp *x, const dTyp *f, int Ndata, int Ngrid,
 		cudaMemset(p->g_f_hat, 0, p->Ngrid * sizeof(Complex))
 	);
 	
-    checkCudaErrors(
-        cudaMemset(p->g_f_grid, 0, p->Ngrid * sizeof(dTyp))
-	);
 
 	LOG("cudaMemcpy f_data_complex ==> p->g_f_data");
 	// Copy f_j -> GPU
@@ -279,12 +265,9 @@ void free_plan(plan *p){
 	LOG("cudaFree p->g_x_data");
 	checkCudaErrors(cudaFree(p->g_x_data));
 
-	LOG("cudaFree p->g_f_grid");
-	checkCudaErrors(cudaFree(p->g_f_grid));
 
 	if(p->flags & CALCULATE_WINDOW_FUNCTION) {
 		checkCudaErrors(cudaFree(p->g_f_hat_win));
-		checkCudaErrors(cudaFree(p->g_f_grid_win));
 		free(p->f_hat_win);
 	}
 

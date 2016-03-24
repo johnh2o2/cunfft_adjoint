@@ -45,6 +45,11 @@ void cunfft_adjoint_from_plan( plan *p );
  *
  *
  */
-void cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, dTyp *f_grid, 
+void cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data,
     Complex *f_hat, const int n, const int ng, const filter_properties *gpu_fprops);
+
+void cunfft_adjoint_raw_async(const dTyp *x, const dTyp *f_data, 
+    Complex *f_hat, const int n, const int ng, const filter_properties *gpu_fprops,
+    cudaStream_t stream);
+
 #endif

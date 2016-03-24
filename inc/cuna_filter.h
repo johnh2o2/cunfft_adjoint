@@ -34,6 +34,11 @@
 __host__ void 
 set_filter_properties( plan *p ); 
 
+__host__ void
+generate_pinned_filter_properties(const dTyp *x, const int n, const int ng,
+        filter_properties *h_fprops, filter_properties *d_fprops, 
+	cudaStream_t stream);
+
 /**
  *
  *
