@@ -72,4 +72,8 @@ filter( const int j_data, const int i_grid, const int m, const filter_properties
 __global__ void 
 normalize( Complex *f_hat, const int Ngrid, const filter_properties *f );
 
+
+__global__ void
+normalize_bootstrap( Complex *f_hat, const int Ngrid, const int Nbootstrap, 
+                     const filter_properties *f);
 #endif

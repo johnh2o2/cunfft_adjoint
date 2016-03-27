@@ -62,7 +62,7 @@ generate_pinned_filter_properties(const dTyp *x, const int n, const int ng,
 
         // set gpu filter properties (asynchronously) [ E1, E2, E3 arrays ]
 	set_gpu_filter_properties<<<nblocks, BLOCK_SIZE, 0, stream>>>(d_fprops, x, ng, n);
-
+	checkCudaErrors(cudaGetLastError());
 }
 /*
 __host__
@@ -285,6 +285,19 @@ normalize(Complex *f_hat, const int Ngrid, const filter_properties *f){
 		dTyp fac = f->normfac * cuExp( K * K * f->b * 0.25 );
 		f_hat[k].x *= fac;
 		f_hat[k].y *= fac;
+	}
+}
+
+__global__
+void
+normalize_bootstrap(Complex *f_hat, const int Ngrid, const int Nbootstrap, const filter_properties *f) {
+	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+	if ( i < Ngrid * Nbootstrap ){
+		int k = i % Ngrid;
+		dTyp K = ((dTyp) k) / ((dTyp) Ngrid);
+		dTyp fac = f->normfac * cuExp( K * K * f->b * 0.25 );
+		f_hat[i].x *= fac;
+		f_hat[i].y *= fac;
 	}
 }
 /*

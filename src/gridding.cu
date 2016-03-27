@@ -22,26 +22,34 @@
  */
 
 #include <cuComplex.h>
+//#include <curand.h>
+//#include <curand_kernel.h>
 
 #include "cuna_typedefs.h"
 #include "cuna_gridding.h"
 #include "cuna_filter.h"
 #include "cuna_utils.h"
 
+
+
 // uses a filter to map unevenly spaced data onto an evenly spaced grid
 __global__ void fast_gridding( const dTyp *f_data, Complex *f_hat, const dTyp *x_data, 
                                 const int Ngrid, const int Ndata, 
                                 const filter_properties *fprops)
 {
-	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
-	
+	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;	
 	if (i < Ndata) {	
+
 		int j = (int) ((x_data[i] + 0.5) * (Ngrid - 1));
-		dTyp val;
+                if (j >= Ngrid) j = Ngrid - 1;
+                if (j < 0 ) j = 0;
+
+		dTyp val, fval;
 		if (f_data == NULL)
 			val = 1.0;
 		else
 			val = f_data[i];
+
 		int mstart = -fprops->filter_radius + 1;
 		int mend = fprops->filter_radius;
 		if (j + mstart < 0) 
@@ -49,9 +57,62 @@ __global__ void fast_gridding( const dTyp *f_data, Complex *f_hat, const dTyp *x
 		if (j + mend > Ngrid)
 			mend = Ngrid - j;
 		
-		for (int m = mstart; m < mend; m++) 
-			atomicAdd(&(f_hat[j + m].x), val * filter(i, j, m, fprops));
-		
+		for (int m = mstart; m < mend; m++) {
+                        fval = val * filter(i, j, m, fprops);
+			atomicAdd(&(f_hat[j + m].x), fval);
+		}
+	}
+}
+
+__device__ unsigned int wang_hash(unsigned int seed) {
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
+__device__ unsigned int rand_XORSHIFT(unsigned int seed) {
+    // Xorshift algorithm from George Marsaglia's paper
+    seed ^= (seed << 13);
+    seed ^= (seed >> 17);
+    seed ^= (seed << 5);
+    return seed;
+}
+
+
+// uses a filter to map unevenly spaced data onto an evenly spaced grid
+__global__ void fast_gridding_bootstrap( const dTyp *f_data, Complex *f_hat, const dTyp *x_data, 
+                                const int Ngrid, const int Ndata, const int Nbootstraps,
+                                const filter_properties *fprops, const unsigned int seed)
+{
+	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+	if (i < Ndata * Nbootstraps) {
+		int d = i%Ndata;
+		int j = (int) ((x_data[d] + 0.5) * (Ngrid - 1));
+                //if (j >= Ngrid) j = Ngrid - 1;
+                //if (j < 0 ) j = 0;
+
+		dTyp val, fval;
+		if (f_data == NULL)
+			val = 1.0;
+		else {
+			d = rand_XORSHIFT(wang_hash(seed + i)) % Ndata;
+			val = f_data[d];
+		}
+
+		int mstart = -fprops->filter_radius + 1;
+		int mend = fprops->filter_radius;
+		if (j + mstart < 0) 
+			mstart = -j;
+		if (j + mend > Ngrid)
+			mend = Ngrid - j;
+		int offset =( i / Ndata ) * Ngrid;
+		for (int m = mstart; m < mend; m++) {
+                        fval = val * filter(d, j, m, fprops);
+			atomicAdd(&(f_hat[j + m + offset].x), fval);
+		}
 	}
 }
 /*

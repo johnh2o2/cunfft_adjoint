@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 // CUDA headers
 #include <cufft.h>
@@ -157,7 +158,7 @@ cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, Complex *f_hat,
     // unequally spaced data -> equally spaced grid
     fast_gridding <<< nblocks, BLOCK_SIZE >>> 
                             ( f_data, f_hat, x, ng, n, gpu_fprops );
-
+    checkCudaErrors(cudaGetLastError());
     
     // resize nblocks
     nblocks = ng / BLOCK_SIZE;
@@ -174,11 +175,11 @@ cunfft_adjoint_raw(const dTyp *x, const dTyp *f_data, Complex *f_hat,
     checkCudaErrors(cudaThreadSynchronize());
   
     // destroy plan
-    cufftDestroy(cuplan);
+    checkCufftError(cufftDestroy(cuplan));
 
     // normalize (eq. 11 in Greengard & Lee 2004)
-    normalize <<< nblocks, BLOCK_SIZE >>>( f_hat, ng, gpu_fprops );
-
+    normalize <<< nblocks, BLOCK_SIZE >>>( f_hat, ng, gpu_fprops ); 
+    checkCudaErrors(cudaGetLastError());
 }
 
 // ASYNCHRONOUS version of cunfft_adjoint_raw
@@ -197,9 +198,10 @@ cunfft_adjoint_raw_async(const dTyp *x, const dTyp *f_data, Complex *f_hat,
     // unequally spaced data -> equally spaced grid
     fast_gridding <<< nblocks, BLOCK_SIZE, 0, stream >>>
                             ( f_data, f_hat, x, ng, n, gpu_fprops );
+//    checkCudaErrors(cudaGetLastError());
 
     // SYNCHRONIZE
-    checkCudaErrors(cudaStreamSynchronize(stream));
+//    checkCudaErrors(cudaStreamSynchronize(stream));
 
     // make plan
     cufftHandle cuplan;
@@ -212,21 +214,80 @@ cunfft_adjoint_raw_async(const dTyp *x, const dTyp *f_data, Complex *f_hat,
     checkCufftError(CUFFT_EXEC_CALL( cuplan, f_hat, f_hat, CUFFT_INVERSE ));
 
     // SYNCHRONIZE
-    checkCudaErrors(cudaStreamSynchronize(stream));
+//    checkCudaErrors(cudaStreamSynchronize(stream));
     
     // destroy plan
-    cufftDestroy(cuplan);
+    checkCufftError(cufftDestroy(cuplan));
 
     // set number of blocks & threads
     nblocks = ng / BLOCK_SIZE;
     while (nblocks * BLOCK_SIZE < ng) nblocks++;
 
     // normalize (eq. 11 in Greengard & Lee 2004)
-    normalize <<< nblocks, BLOCK_SIZE, 0, stream >>>( f_hat, ng, gpu_fprops );
+    normalize <<< nblocks, BLOCK_SIZE, 0, stream >>>( f_hat, ng, gpu_fprops ); 
+//    checkCudaErrors(cudaGetLastError());
 
     // SYNCHRONIZE
-    checkCudaErrors(cudaStreamSynchronize(stream));
+//    checkCudaErrors(cudaStreamSynchronize(stream));
 }
+
+// ASYNCHRONOUS version of cunfft_adjoint_raw
+// x, f_data, f_grid, and f_hat should all be allocated with cudaMalloc or cudaHostMalloc
+void
+cunfft_adjoint_raw_async_bootstrap(const dTyp *x, const dTyp *f_data, Complex *f_hat, 
+	const int n, const int ng, const int nbs, const filter_properties *gpu_fprops, 
+   	cudaStream_t stream) {
+
+    int nblocks;
+
+    // set number of blocks & threads
+    nblocks = n * nbs / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < n * nbs) nblocks++;
+
+    //curandState_t *states;
+    //checkCudaErrors(cudaMallocAsync((void **) &states, n * nbs * sizeof(curandState_t), stream));
+    // unequally spaced data -> equally spaced grid
+    fast_gridding_bootstrap <<< nblocks, BLOCK_SIZE, 0, stream >>>
+                            ( f_data, f_hat, x, ng, n, nbs, gpu_fprops, clock() );
+    // checkCudaErrors(cudaGetLastError());
+
+    // SYNCHRONIZE
+    // checkCudaErrors(cudaStreamSynchronize(stream));
+
+    // make plan
+    cufftHandle cuplan;
+    int *ndpts = (int *)malloc( sizeof(int));
+    ndpts[0] = ng;
+    checkCufftError(cufftPlanMany( &cuplan, 1, ndpts, 
+		NULL, 1, ng, 
+		NULL, 1, ng,  
+		CUFFT_TRANSFORM_TYPE, nbs));
+
+    // set the CUDA stream
+    checkCufftError(cufftSetStream(cuplan, stream));
+
+    // FFT(gridded data)
+    checkCufftError(CUFFT_EXEC_CALL( cuplan, f_hat, f_hat, CUFFT_INVERSE ));
+
+    // SYNCHRONIZE
+    // checkCudaErrors(cudaStreamSynchronize(stream));
+    
+    // destroy plan
+    checkCufftError(cufftDestroy(cuplan));
+
+    // set number of blocks & threads
+    nblocks = ng*nbs / BLOCK_SIZE;
+    while (nblocks * BLOCK_SIZE < ng*nbs) nblocks++;
+
+    // normalize (eq. 11 in Greengard & Lee 2004)
+    normalize_bootstrap <<< nblocks, BLOCK_SIZE, 0, stream >>>
+					( f_hat, ng, nbs,  gpu_fprops ); 
+    // checkCudaErrors(cudaGetLastError());
+
+    // SYNCHRONIZE
+    // checkCudaErrors(cudaStreamSynchronize(stream));
+}
+
 
 __host__
 int

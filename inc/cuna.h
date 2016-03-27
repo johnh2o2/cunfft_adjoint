@@ -52,4 +52,6 @@ void cunfft_adjoint_raw_async(const dTyp *x, const dTyp *f_data,
     Complex *f_hat, const int n, const int ng, const filter_properties *gpu_fprops,
     cudaStream_t stream);
 
+void cunfft_adjoint_raw_async_bootstrap(const dTyp *x, const dTyp *f_data, Complex *f_hat,
+					const int n, const int ng, const int nbs, const filter_properties *gpu_fprops, cudaStream_t stream);
 #endif

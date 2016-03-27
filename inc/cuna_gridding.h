@@ -33,4 +33,9 @@ __global__ void
 fast_gridding( const dTyp *f_data, Complex *f_hat, const dTyp *x_data, const int Ngrid, 
                const int Ndata, const filter_properties *fprops );
 
+__global__ void 
+fast_gridding_bootstrap( const dTyp *f_data, Complex *f_hat, const dTyp *x_data, const int Ngrid, 
+               const int Ndata, const int Nbootstraps, const filter_properties *fprops,
+	       const unsigned int seed );
+
 #endif
