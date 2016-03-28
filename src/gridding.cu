@@ -115,6 +115,40 @@ __global__ void fast_gridding_bootstrap( const dTyp *f_data, Complex *f_hat, con
 		}
 	}
 }
+
+__global__ void fast_gridding_batch(const dTyp *f_data, Complex *f_hat, const dTyp *x_data, const int *Ngrid, const int *Ndata, const int idist, const int nlc, const filter_properties **fprops) {
+	
+	int i = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+        int lc, sum=0;
+        while (lc < nlc && i - sum > Ndata[lc]) {
+		sum += Ndata[lc];
+		lc ++;
+	}
+        int d = i - sum;
+
+	if (lc < nlc) {
+		int ng = Ngrid[lc];
+		int j = (int) ((x_data[i] + 0.5) * (ng - 1));
+		dTyp val, fval;
+		if( f_data == NULL)
+			val = 1.0;
+		else 
+			val = f_data[i];
+		
+		int mstart = -fprops->filter_radius + 1;
+		int mend = fprops->filter_radius;
+		if ( j + mstart < 0 )
+			mstart = -j;
+		if ( j + mend > ng )
+			mend = ng - j;
+		int offset = idist * lc;
+		filter_properties *fp = fprops[lc];
+		for (int m = mstart; m < mend; m++) {
+			fval = val * filter(d, j, m, fp);
+			atomicAdd(&(f_hat[j + m + offset].x), fval);
+	        }
+        }
+}
 /*
 // uses a filter to map unevenly spaced data onto an evenly spaced (PADDED) grid
 // { g1[0] g1[1] 0 0 0 | g2[0] g2[1] g2[2] g2[3] g2[4] | ... }
