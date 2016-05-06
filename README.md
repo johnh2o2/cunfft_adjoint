@@ -1,4 +1,4 @@
-#CUNA v1.2
+#CUNA v1.3
 ##CUDA implementation of the NFFT adjoint operation
 
 ####(c) John Hoffman, 2016

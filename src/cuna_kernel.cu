@@ -236,7 +236,7 @@ cunfft_adjoint_raw_async(const dTyp *x, const dTyp *f_data, Complex *f_hat,
 void
 cunfft_adjoint_raw_async_bootstrap(const dTyp *x, const dTyp *f_data, Complex *f_hat, 
 	const int n, const int ng, const int nbs, const filter_properties *gpu_fprops, 
-   	cudaStream_t stream) {
+   	cudaStream_t stream, const unsigned int seed) {
 
     int nblocks;
 
@@ -248,7 +248,7 @@ cunfft_adjoint_raw_async_bootstrap(const dTyp *x, const dTyp *f_data, Complex *f
     //checkCudaErrors(cudaMallocAsync((void **) &states, n * nbs * sizeof(curandState_t), stream));
     // unequally spaced data -> equally spaced grid
     fast_gridding_bootstrap <<< nblocks, BLOCK_SIZE, 0, stream >>>
-                            ( f_data, f_hat, x, ng, n, nbs, gpu_fprops, clock() );
+                            ( f_data, f_hat, x, ng, n, nbs, gpu_fprops, seed );
     // checkCudaErrors(cudaGetLastError());
 
     // SYNCHRONIZE
